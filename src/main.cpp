@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
     if (binoTranslator.load(QLocale(), "bino", "_", ":/i18n")) {
         app.installTranslator(&binoTranslator);
     }
-    QCoreApplication::setOrganizationName("Bino3D");
+    QCoreApplication::setOrganizationName("Bino3D-stereo");
     QCoreApplication::setOrganizationDomain("bino3d.org");
     QCoreApplication::setApplicationName("Bino");
     QSettings settings;
@@ -704,10 +704,8 @@ int main(int argc, char* argv[])
             format.setProfile(QSurfaceFormat::CoreProfile);
             format.setVersion(3, 3);
         }
-        if (guiMode && parser.isSet("stereo")) {
-            // Try to get quad-buffered stereo.
-            // On modern systems it's ok if this fails.
-            // On legacy proprietary NVIDIA crap, it breaks.
+        if (guiMode) {
+            // Always get quad-buffered stereo: the output is always OpenGL stereo.
             format.setOption(QSurfaceFormat::StereoBuffers);
         }
         QSurfaceFormat::setDefaultFormat(format);
@@ -765,13 +763,8 @@ int main(int argc, char* argv[])
         return 1;
 #endif
     } else {
-        // Restore GUI settings unless they were overwritten on the command line
-        if (!parser.isSet("output")) {
-            bool ok = false;
-            OutputMode om = outputModeFromString(qPrintable(settings.value("OutputMode").toString()), &ok);
-            if (ok)
-                outputMode = om;
-        }
+        // The output is always OpenGL stereo, whatever was saved or given on the command line
+        outputMode = Output_OpenGL_Stereo;
         // Start the GUI
         Gui gui(outputMode, surroundVerticalFOV, parser.isSet("fullscreen"));
         gui.show();
