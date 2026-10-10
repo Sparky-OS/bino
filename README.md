@@ -1,3 +1,29 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/sparky-stereo-os/sparkyos-swirl-light-128.png">
+  <img src=".github/sparky-stereo-os/sparkyos-swirl-dark-128.png" alt="SparkyOS" width="128" height="128">
+</picture>
+
+## Sparky Stereo OS
+
+This is the stereo version of Bino by Sparky Stereo OS, forked from [marlam/bino](https://github.com/marlam/bino).
+It is the distribution's Bino: it decodes every 3D input layout Bino knows, and its output is always OpenGL stereo, which the desktop receives as one full side-by-side picture; Stereo KWin then gives each screen what it needs (a 3D TV's HDMI 1.4a mode, anaglyph, or the left eye on a plain screen), so the output modes are not in its menu.
+It also plays right-first stereo videos with the eyes in the right place: the "inverted" flag of the Stereo 3D side data, which ffprobe prints as a number, was never read, so Matroska StereoMode 11 and 2 (RFC 9559, right eye first) showed the eyes swapped.
+Its settings live in their own folder, Bino3D-stereo, beside those of a stock Bino.
+
+Where it comes from:
+
+- [Bino](https://bino3d.org/) is written by Martin Lambers (the copyright in `src/main.cpp`).
+- [Debian](https://www.debian.org/) is the base of the system.
+- [SparkyLinux](https://sparkylinux.org/), by Paweł "pavroo" Pijanowski, builds on Debian.
+- [Sparky Stereo OS](https://github.com/Sparky-OS/sparky-stereo-os) is the stereo 3D edition of SparkyLinux: SparkyOS, powered by Debian.
+
+The `stereo3d` branch holds the version the distribution builds (`bino 2.8-1+stereo3d1`), on Bino 2.8.
+The licence is unchanged; see [LICENSE.md](LICENSE.md).
+
+Sparky Stereo OS, Daniel Ramos's edition of SparkyLinux (by Paweł "pavroo" Pijanowski).
+
+---
+
 # Bino: a 3D video player
 
 Bino is a video player with a focus on 3D and Virtual Reality:
