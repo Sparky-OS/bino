@@ -437,10 +437,13 @@ void Widget::paintGL()
             placedWidth = placedHeight * frameDisplayAspectRatio;
         }
         const QSize placedSize(qRound(placedWidth), qRound(placedHeight));
-        const QRect placed(QPoint((this->width() - placedSize.width()) / 2,
-                (this->height() - placedSize.height()) / 2), placedSize);
-        _lastFrameRelWidth = placed.width() / float(this->width());
-        _lastFrameRelHeight = placed.height() / float(this->height());
+        const QSize displaySize(qRound(viewHeight * frameDisplayAspectRatio), viewHeight);
+        const QRect placed = frameIsStereo
+                ? QRect(QPoint(), displaySize)
+                : QRect(QPoint((this->width() - placedSize.width()) / 2,
+                    (this->height() - placedSize.height()) / 2), placedSize);
+        _lastFrameRelWidth = frameIsStereo ? 1.0f : placed.width() / float(this->width());
+        _lastFrameRelHeight = frameIsStereo ? 1.0f : placed.height() / float(this->height());
         rebuildDisplayPrgIfNecessary();
         if (_nativeLayer->begin(eyeSize, viewCount, placed)) {
             glDisable(GL_DEPTH_TEST);
@@ -476,14 +479,16 @@ void Widget::paintGL()
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
         QPainter painter(this);
-        painter.fillRect(QRect(0, 0, this->width(), placed.top()), Qt::black);
-        painter.fillRect(QRect(0, placed.bottom() + 1, this->width(), this->height() - placed.bottom() - 1), Qt::black);
-        painter.fillRect(QRect(0, placed.top(), placed.left(), placed.height()), Qt::black);
-        painter.fillRect(QRect(placed.right() + 1, placed.top(), this->width() - placed.right() - 1, placed.height()), Qt::black);
-        painter.translate(placed.topLeft());
+        if (!frameIsStereo) {
+            painter.fillRect(QRect(0, 0, this->width(), placed.top()), Qt::black);
+            painter.fillRect(QRect(0, placed.bottom() + 1, this->width(), this->height() - placed.bottom() - 1), Qt::black);
+            painter.fillRect(QRect(0, placed.top(), placed.left(), placed.height()), Qt::black);
+            painter.fillRect(QRect(placed.right() + 1, placed.top(), this->width() - placed.right() - 1, placed.height()), Qt::black);
+            painter.translate(placed.topLeft());
+        }
         // Paint at the display raster, independently of the video's stored samples.
         painter.scale(1.0 / devicePixelRatioF(), 1.0 / devicePixelRatioF());
-        Bino::instance()->paintOverlays(painter, placed.size() * devicePixelRatioF());
+        Bino::instance()->paintOverlays(painter, (frameIsStereo ? size() : placed.size()) * devicePixelRatioF());
         painter.end();
         scheduleOverlayUpdate();
         return;

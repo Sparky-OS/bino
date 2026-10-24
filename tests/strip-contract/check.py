@@ -5,13 +5,14 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 p=argparse.ArgumentParser();p.add_argument('fixtures',type=Path);p.add_argument('case');p.add_argument('capture',type=Path)
+p.add_argument('--swap-expected',action='store_true')
 a=p.parse_args();case=next(c for c in json.loads((a.fixtures/'manifest.json').read_text()) if c['name']==a.case)
 log=a.capture/'buffers/log.jsonl'
 rows=[json.loads(x) for x in log.read_text().splitlines()] if log.exists() else []
 report=dict(case=a.case,declared_buffers=len(rows),checks={})
 checks=report['checks']; checks['declared_stereo']=bool(rows)==case['stereo']
 if case['stereo'] and rows:
-    expected=np.concatenate([np.asarray(Image.open(a.fixtures/(a.case+'-'+eye+'.png')).convert('RGB')) for eye in ('left','right')],axis=1)
+    expected=np.concatenate([np.asarray(Image.open(a.fixtures/(a.case+'-'+eye+'.png')).convert('RGB')) for eye in (('right','left') if a.swap_expected else ('left','right'))],axis=1)
     checks['native_size']=all([r['width'],r['height']]==case['strip'] for r in rows)
     checks['source_display_size']=all(r['destination']==case['display'] for r in rows)
     errors=[]
@@ -25,5 +26,5 @@ if case['stereo'] and rows:
     else: checks['source_samples']=False
     report['destinations']=[list(x) for x in sorted({tuple(r['destination']) for r in rows})]
 report['pass']=all(checks.values());print(json.dumps(report,indent=2))
-(a.capture/'result.json').write_text(json.dumps(report,indent=2)+'\n')
+(a.capture/('swapped-result.json' if a.swap_expected else 'result.json')).write_text(json.dumps(report,indent=2)+'\n')
 raise SystemExit(0 if report['pass'] else 1)
