@@ -7,6 +7,7 @@
 #include <QSurfaceFormat>
 #include <QTimer>
 #include <QJsonDocument>
+#include <QIcon>
 #include <QJsonObject>
 #include <QMainWindow>
 #include <QMenuBar>
@@ -190,6 +191,13 @@ int main(int argc, char** argv)
     format.setSamples(0);
     QSurfaceFormat::setDefaultFormat(format);
     QApplication app(argc, argv);
+    if (qEnvironmentVariableIsSet("PIXEL_UI")) {
+        QIcon::setThemeSearchPaths({ "/work/test-icons" });
+        QIcon::setThemeName("breeze-dark");
+        for (const QString& name : { "media-playback-start", "media-playback-pause",
+                "media-seek-backward", "media-seek-forward" })
+            if (QIcon::fromTheme(name).isNull()) qFatal("missing playback control icon");
+    }
     if (stereo && NativeVideoLayer::supported()) {
         format.setStereo(false);
         format.setAlphaBufferSize(8);

@@ -164,6 +164,7 @@ The Wayland path uses the existing full-SBS surface declaration and viewport des
 Both keep the stored eye raster unchanged, while the ordinary Qt window paints subtitles and controls at display resolution.
 
 `PIXEL_UI=1 PIXEL_HOLD=1` checks the playback controls as a separate ordinary overlay.
+Mount the published breeze-dark icon theme read-only at `/work/test-icons/breeze-dark` and provide the matching `qt6-svg-plugins` package; the probe rejects missing playback and seek icons.
 The probe saves their original renderer's image from serialized player state; `overlay.py CASE ui-reference.png` compares alpha and premultiplied color at the display raster.
 The same checker accepts `subtitle-reference.png` for subtitles.
 `lifecycle.py CASE` checks every stored source sample and both buffer and window dimensions across the five lifecycle stages.
