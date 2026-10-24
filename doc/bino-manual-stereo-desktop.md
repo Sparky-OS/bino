@@ -16,6 +16,19 @@ Bino is a video player with a focus on 3D and Virtual Reality:
 - Support for Virtual Reality environments, including SteamVR,
   CAVEs, powerwalls, and other multi-display / multi-GPU / multi-host systems
 
+# Source layout and display
+
+The stereo desktop receives one declared side-by-side strip, left view first, with each view at its stored resolution.
+Bino reads file declarations in process through libstereo-av and uses the decoder's frame metadata.
+The source pixel aspect determines the display shape.
+The compositor resizes each view once into the fitted rectangle in the window or fullscreen area.
+Subtitles and controls use separate ordinary two-dimensional layers.
+
+For a source that declares its packing, the input packing menus are hidden.
+For an unmarked source, choose its packing in the input menu.
+Eye swap and unmarked-source packing corrections are saved per file in Bino's settings, without modifying the media.
+Bino has no display-format selector in this build; the desktop's output settings choose the screen format.
+
 # Invocation
 
 `bino` [*options*] *URL*...

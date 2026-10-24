@@ -25,4 +25,7 @@ The containment test independently rejects a surface which extends beyond the or
 The first twelve fixtures cover side by side, top and bottom, rows, columns and checkerboard in both orders, the 1920x804 H.264 SAR 2:1 StereoMode 1 case, and an unmarked mono control.
 H.264 uses the lossless RGB encoder so source samples remain independently identifiable.
 The original film is never opened or copied.
-These fixtures do not yet cover all temporal, multiview, anaglyph and quincunx playback paths.
+`extra-fixtures.py` adds both temporal eye orders, half-top-bottom 1920x1080 (two 1920x540 views), and full-SBS 3840x1080 (two 1920x1080 views).
+The temporal check includes the first submitted buffer; a black or incomplete initial pair fails.
+The HD check also covers a file whose frame data exceeds the bounded inspection byte allowance.
+Multiview and anaglyph playback and the codec quincunx flag need separate fixtures beyond this matrix.

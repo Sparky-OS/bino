@@ -20,6 +20,8 @@ for parent in root.query_tree().children:
         assert place is not None and place.property_type==Xatom.CARDINAL and place.format==32
         assert list(place.value)==[0,0,640,360,1],list(place.value)
         assert (geometry.width,geometry.height)==(640,180)
+        one_view=prop(child,'_KDE_NET_WM_STEREO_CONTENT_ONE_VIEW_SIZE')
+        assert one_view is not None and list(one_view.value)==[640,360]
         parent_content=prop(parent,'_KDE_NET_WM_STEREO_CONTENT')
         assert parent_content is None or list(parent_content.value)==[0]
         found.append({'child':int(childid),'native_size':[geometry.width,geometry.height],'placement':list(map(int,place.value)),'content':3,'parent_content':0})
