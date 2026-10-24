@@ -173,6 +173,7 @@ Gui::Gui(OutputMode outputMode, float surroundVerticalFOV, bool fullscreen) :
     connect(threeDInMono, SIGNAL(triggered()), this, SLOT(threeDInput()));
     addBinoAction(threeDInMono, threeDMenu);
     QMenu* threeDInputAboveBelowMenu = threeDMenu->addMenu(tr("Input 3D above-below"));
+    _3dInputMenus.append(threeDInputAboveBelowMenu->menuAction());
     QAction* threeDInTopBottom = new QAction(inputModeToStringUI(Input_Top_Bottom), this);
     threeDInTopBottom->setCheckable(true);
     _3dInputActionGroup->addAction(threeDInTopBottom)->setData(int(Input_Top_Bottom));
@@ -194,6 +195,7 @@ Gui::Gui(OutputMode outputMode, float surroundVerticalFOV, bool fullscreen) :
     connect(threeDInBottomTopHalf, SIGNAL(triggered()), this, SLOT(threeDInput()));
     addBinoAction(threeDInBottomTopHalf, threeDInputAboveBelowMenu);
     QMenu* threeDInputSideBySideMenu = threeDMenu->addMenu(tr("Input 3D side-by-side"));
+    _3dInputMenus.append(threeDInputSideBySideMenu->menuAction());
     QAction* threeDInLeftRight = new QAction(inputModeToStringUI(Input_Left_Right), this);
     threeDInLeftRight->setCheckable(true);
     _3dInputActionGroup->addAction(threeDInLeftRight)->setData(int(Input_Left_Right));
@@ -215,6 +217,7 @@ Gui::Gui(OutputMode outputMode, float surroundVerticalFOV, bool fullscreen) :
     connect(threeDInRightLeftHalf, SIGNAL(triggered()), this, SLOT(threeDInput()));
     addBinoAction(threeDInRightLeftHalf, threeDInputSideBySideMenu);
     QMenu* threeDInputAlternatingMenu = threeDMenu->addMenu(tr("Input 3D alternating"));
+    _3dInputMenus.append(threeDInputAlternatingMenu->menuAction());
     QAction* threeDInAlternatingLR = new QAction(inputModeToStringUI(Input_Alternating_LR), this);
     threeDInAlternatingLR->setCheckable(true);
     _3dInputActionGroup->addAction(threeDInAlternatingLR)->setData(int(Input_Alternating_LR));
@@ -1186,6 +1189,10 @@ void Gui::updateActions()
         QAction* a = _3dSurroundActionGroup->actions()[i];
         a->setChecked(a->data().toInt() == int(surroundMode));
     }
+#if BINO_STEREO_DESKTOP
+    for (QAction* menu : _3dInputMenus)
+        menu->setVisible(!Bino::instance()->inputDeclared());
+#endif
     InputMode inputMode = Bino::instance()->assumeInputMode();
     for (int i = 0; i < _3dInputActionGroup->actions().size(); i++) {
         QAction* a = _3dInputActionGroup->actions()[i];

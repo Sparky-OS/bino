@@ -45,6 +45,7 @@ private:
     QActionGroup* _trackSubtitleActionGroup;
     QActionGroup* _3dSurroundActionGroup;
     QActionGroup* _3dInputActionGroup;
+    QList<QAction*> _3dInputMenus;
 #if !BINO_STEREO_DESKTOP
     QActionGroup* _3dOutputActionGroup;
 #endif
