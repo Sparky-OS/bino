@@ -20,6 +20,7 @@
 
 uniform sampler2D plane0;
 uniform int channelOrder;
+uniform float sampleScale;
 uniform sampler2D plane1;
 uniform sampler2D plane2;
 uniform sampler2D plane3;
@@ -86,6 +87,7 @@ void main(void)
                     texture(plane0, vtexcoord).r,
                     texture(plane1, vtexcoord).rg);
         }
+        yuv *= sampleScale;
         mat4 m;
         // The following matrices are the same as used by Qt,
         // see qtmultimedia/src/multimedia/video/qvideotexturehelper.cpp

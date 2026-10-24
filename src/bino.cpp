@@ -1188,6 +1188,12 @@ void Bino::convertFrameToTexture(VideoFrame& frame, unsigned int frameTex)
     glUseProgram(_colorPrg.programId());
     _colorPrg.setUniformValue("masteringWhite", frame.masteringWhite);
     _colorPrg.setUniformValue("channelOrder", channelOrder);
+    // P010/P016 store limited-range codes in the high bits of normalized R16.
+    // Convert code/65535 to the 8-bit matrix's code/65280 convention.
+    const bool wideLimited = frame.colorRangeSmall
+            && (frame.pixelFormat == QVideoFrameFormat::Format_P010
+                || frame.pixelFormat == QVideoFrameFormat::Format_P016);
+    _colorPrg.setUniformValue("sampleScale", wideLimited ? 65535.0f / 65280.0f : 1.0f);
     for (int p = 0; p < planeCount; p++) {
         _colorPrg.setUniformValue(qPrintable(QString("plane") + QString::number(p)), p);
         glActiveTexture(GL_TEXTURE0 + p);

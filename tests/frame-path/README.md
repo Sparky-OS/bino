@@ -215,3 +215,70 @@ in the original divergent eye-selection branches. Those three modes now use
 explicit gradients calculated before the branch; their conversion and parity
 rules are unchanged. Use `--modes 13 14 15` to repeat just that regression on a
 second driver. The one-code-value tolerance is unchanged.
+
+## Hardware texture import (milestone 4)
+
+Build the edition with the private development headers matching Qt Multimedia
+6.11.2-3+stereo3d9+lc1 (`qt6-multimedia-private-dev`). The OFF build does not
+require them. `VideoFrame` retains supported frames unmapped until Bino has its
+rendering context. `VideoTextureImporter` initializes `QHwVideoBuffer`'s converter
+with a QRhi borrowing that context, calls `mapTextures`, validates the native GL
+planes, and keeps the source frame and textures alive until a GL fence completes.
+Unsupported imports use the existing map/upload path. The rendering and timer
+policies are unchanged.
+
+`import-fixture.py DIRECTORY` generates a 72-frame H.264 source with spatial and
+temporal addresses in both eyes. `--color` adds fixed non-neutral chroma, and
+`--ten-bit` generates a Main10 HEVC source. Raw input and encoded output both
+specify BT.709 limited range. Fixed chroma avoids comparing different chroma
+reconstruction filters at edges; the moving luma addresses still detect stale,
+swapped, scaled or missing eyes.
+
+Run `pixel-case.sh` in a fresh isolated compositor with `PIXEL_HW_DEVICE=vaapi`,
+`PIXEL_TRACE_TRANSFER=1`, `PIXEL_CLIP` pointing at the fixture, and
+`PROBE_BINARY` pointing at the candidate widget probe. `PIXEL_WARMUP=1` collects
+across repeated playback when shader compilation or host load skips timestamps;
+the source gate still requires at least 20 paired timestamps. For cold NVIDIA
+startup, `PIXEL_TIMEOUT=40` bounds the whole process, including initialization
+and teardown. The default remains 20 seconds.
+
+Validate each run with both commands:
+
+```
+python3 pixels.py check CASE --clip CLIP --accurate-yuv --native-layer --check-native-size --check-passes
+python3 import-path.py CASE --path import
+```
+
+The first checks every captured RGB channel against the independently decoded
+source, at tolerance 1. `--accurate-yuv` requests FFmpeg's accurate rounding and
+full chroma interpolation; the original RGB fixture/reference is unchanged.
+The second requires imports and rejects every CPU map, application upload and
+independently interposed `av_hwframe_transfer_data` call. Before the fix the
+72-frame VA-API source records 72 maps and 72 hardware transfers and fails.
+
+Run the same hardware decoder with `QT_DISABLE_HW_TEXTURES_CONVERSION=1` and
+check `--path map`: CPU maps and independent transfers must occur, with no
+imports. Set `PIXEL_HW_DEVICE=,` and check `--path software`: mapping must occur
+but hardware transfers must not. On this Qt backend CUDA and the X11 GLX route
+use mapping; their source pixels must pass too. Import failure is an ordinary
+fallback, not a reason to discard the frame.
+
+Run `deferred-probe` on the offscreen Qt platform to check metadata/re-update
+without mapping, one-time mapping, unchanged serialization bytes, failed mapping,
+and source ownership. Run `texture-lifetime-probe` with a real GL context to
+check live native handles, source retention after the caller drops its frame,
+bounded leases, unavailable/unsupported imports, current-surface restoration,
+and context teardown/recreation. These are lifecycle tests with synthetic
+textures; the VA-API runs supply the actual decoder/import proof.
+
+A held hardware source with `PIXEL_HOLD=1 PIXEL_LIFECYCLE=1` checks resize,
+hide/show, stereo-to-mono and mono-to-stereo while importing. Do not combine
+lifecycle with playback warmup. Check it with `lifecycle.py CASE --clip CLIP
+--accurate-yuv`, which validates the entire buffer at each stage's source PTS.
+
+The Main10 test also exposes a pre-existing limited-range conversion error:
+P010/P016 normalized R16 samples use denominator 65535, whereas the existing
+8-bit matrix expects equivalent codes divided by 65280. Rescaling those samples
+by 65535/65280 before the matrix corrects both import and mapping; 8-bit samples
+keep scale 1. The retained pre-correction Main10 runs fail with maximum RGB
+error 3 on both paths. This is an SDR BT.709 test, not HDR proof.
