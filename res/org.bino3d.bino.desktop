@@ -8,7 +8,7 @@ GenericName[ru]=3D видео плеер
 Icon=org.bino3d.bino
 Categories=AudioVideo;Video;Player;
 Type=Application
-Exec=bino %u
+Exec=env QT_QPA_PLATFORM=xcb bino %u
 StartupNotify=true
 Terminal=false
 MimeType=video/mp4;video/mpeg;video/ogg;video/quicktime;video/webm;video/x-matroska;video/x-mng;video/x-ms-wmv;video/x-msvideo;

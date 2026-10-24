@@ -17,6 +17,11 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 # Required: Qt6
 find_package(Qt6 6.7.0 REQUIRED COMPONENTS OpenGLWidgets Multimedia LinguistTools)
+# Optional: Sparky Stereo OS's stereo layer, the rule that the players of the edition share to tell what a 3D video is
+find_package(StereoLayer 1.5 CONFIG QUIET)
+if(StereoLayer_FOUND)
+    add_definitions(-DHAVE_STEREO_LAYER)
+endif()
 # Optional: QVR for Virtual Reality support
 find_package(QVR 4.1.0 QUIET)
 if(QVR_FOUND)
@@ -64,6 +69,9 @@ qt6_add_resources(bino "misc" PREFIX "/" FILES
 	res/bino-fallback-frame.png)
 set_target_properties(bino PROPERTIES WIN32_EXECUTABLE TRUE)
 target_link_libraries(bino PRIVATE Qt6::OpenGLWidgets Qt6::Multimedia ${QVR_LIBRARIES})
+if(StereoLayer_FOUND)
+    target_link_libraries(bino PRIVATE Stereo::Layer)
+endif()
 install(TARGETS bino RUNTIME DESTINATION bin)
 
 # The manual and man page (optional, only if pandoc is found)

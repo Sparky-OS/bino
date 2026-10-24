@@ -24,8 +24,14 @@
 #include <QMap>
 #include <QJsonDocument>
 #include <QJsonValue>
+#include <QMediaMetaData>
+#include <QStringList>
 #ifndef Q_OS_WASM
 # include <QProcess>
+#endif
+
+#ifdef HAVE_STEREO_LAYER
+# include <video.h>
 #endif
 
 #include "metadata.hpp"
@@ -36,6 +42,30 @@
 MetaData::MetaData()
 {
 }
+
+#ifdef HAVE_STEREO_LAYER
+static InputMode halfInputMode(InputMode mode)
+{
+    switch (mode) {
+    case Input_Left_Right: return Input_Left_Right_Half;
+    case Input_Right_Left: return Input_Right_Left_Half;
+    case Input_Top_Bottom: return Input_Top_Bottom_Half;
+    case Input_Bottom_Top: return Input_Bottom_Top_Half;
+    default: return mode;
+    }
+}
+
+/* Whether the views of a packed stream are full or half size: what the stream says (a Matroska track's plane size, which FFmpeg
+ * folds into the sample aspect ratio), then the shape of the frame, by the rule the players of Sparky Stereo OS share. */
+static bool fullViews(const QJsonValue& stream, bool matroska, Stereo::Picture::Layout layout)
+{
+    const QSize coded(stream["width"].toInt(), stream["height"].toInt());
+    const QStringList ratio = stream["sample_aspect_ratio"].toString().split(':');
+    const QSize sar = ratio.size() == 2 ? QSize(ratio[0].toInt(), ratio[1].toInt()) : QSize();
+    const QSize plane = matroska ? Stereo::Video::matroskaPlane(coded, sar, layout) : QSize();
+    return Stereo::Video::views(coded, sar, plane, -1, layout).full;
+}
+#endif
 
 static int haveFFprobe = -1;
 static QMap<QUrl, MetaData> cache;
@@ -52,34 +82,56 @@ bool MetaData::detectCached(const QUrl& url, QString* errMsg)
     SurroundMode defaultSurroundMode = Surround_Unknown;
     QString fileName = url.fileName();
     QString extension = getExtension(fileName);
+#ifdef HAVE_STEREO_LAYER
+    Stereo::Picture::Layout nameTagLayout = Stereo::Picture::Layout::None;
+    int nameTagViews = -1;
+#endif
     if (extension == "jps" || extension == "pns") {
         defaultInputMode = Input_Right_Left;
     } else if (extension == "mpo") {
         defaultInputMode = Input_Top_Bottom;       // this was converted; see digestiblemedia
     } else {
-        /* Try to guess the input mode from a marker contained in the file name.
-         * This should be compatible to the Bino 1.x naming conventions. */
-        QString marker = fileName.left(fileName.lastIndexOf('.'));
-        marker = marker.right(marker.length() - marker.lastIndexOf('-') - 1);
-        marker = marker.toLower();
-        if (marker == "lr")
-            defaultInputMode = Input_Left_Right;
-        else if (marker == "rl")
-            defaultInputMode = Input_Right_Left;
-        else if (marker == "lrh" || marker == "lrq")
-            defaultInputMode = Input_Left_Right_Half;
-        else if (marker == "rlh" || marker == "rlq")
-            defaultInputMode = Input_Right_Left_Half;
-        else if (marker == "tb" || marker == "ab")
-            defaultInputMode = Input_Top_Bottom;
-        else if (marker == "bt" || marker == "ba")
-            defaultInputMode = Input_Bottom_Top;
-        else if (marker == "tbh" || marker == "abq")
-            defaultInputMode = Input_Top_Bottom_Half;
-        else if (marker == "bth" || marker == "baq")
-            defaultInputMode = Input_Bottom_Top_Half;
-        else if (marker == "2d")
-            defaultInputMode = Input_Mono;
+#ifdef HAVE_STEREO_LAYER
+        /* The 3D tag of the file name, read as the players of Sparky Stereo OS read it (SBS, TAB, OU, HSBS, FSBS, LR, RL and so on).
+         * A tag that does not say half or full leaves it to the size of the video, which is known below. */
+        const Stereo::Video::NameTag tag = Stereo::Video::nameTag(fileName);
+        if (tag.layout == Stereo::Picture::Layout::SideBySide || tag.layout == Stereo::Picture::Layout::TopAndBottom) {
+            nameTagLayout = tag.layout;
+            nameTagViews = tag.views;
+            const bool sbs = tag.layout == Stereo::Picture::Layout::SideBySide;
+            const bool rightFirst = tag.eyeOrder == Stereo::Picture::EyeOrder::RightFirst;
+            const bool half = tag.views == 0;
+            if (sbs)
+                defaultInputMode = rightFirst ? (half ? Input_Right_Left_Half : Input_Right_Left) : (half ? Input_Left_Right_Half : Input_Left_Right);
+            else
+                defaultInputMode = rightFirst ? (half ? Input_Bottom_Top_Half : Input_Bottom_Top) : (half ? Input_Top_Bottom_Half : Input_Top_Bottom);
+        }
+#endif
+        if (defaultInputMode == Input_Unknown) {
+            /* Try to guess the input mode from a marker contained in the file name.
+             * This should be compatible to the Bino 1.x naming conventions. */
+            QString marker = fileName.left(fileName.lastIndexOf('.'));
+            marker = marker.right(marker.length() - marker.lastIndexOf('-') - 1);
+            marker = marker.toLower();
+            if (marker == "lr")
+                defaultInputMode = Input_Left_Right;
+            else if (marker == "rl")
+                defaultInputMode = Input_Right_Left;
+            else if (marker == "lrh" || marker == "lrq")
+                defaultInputMode = Input_Left_Right_Half;
+            else if (marker == "rlh" || marker == "rlq")
+                defaultInputMode = Input_Right_Left_Half;
+            else if (marker == "tb" || marker == "ab")
+                defaultInputMode = Input_Top_Bottom;
+            else if (marker == "bt" || marker == "ba")
+                defaultInputMode = Input_Bottom_Top;
+            else if (marker == "tbh" || marker == "abq")
+                defaultInputMode = Input_Top_Bottom_Half;
+            else if (marker == "bth" || marker == "baq")
+                defaultInputMode = Input_Bottom_Top_Half;
+            else if (marker == "2d")
+                defaultInputMode = Input_Mono;
+        }
     }
     if (defaultInputMode != Input_Unknown) {
         LOG_DEBUG("guessing input mode %s from file name %s", inputModeToString(defaultInputMode), qPrintable(fileName));
@@ -132,6 +184,17 @@ bool MetaData::detectCached(const QUrl& url, QString* errMsg)
     subtitleTracks = player.subtitleTracks();
     inputModes.resize(videoTracks.size(), defaultInputMode);
     surroundModes.resize(videoTracks.size(), defaultSurroundMode);
+#ifdef HAVE_STEREO_LAYER
+    if (nameTagLayout != Stereo::Picture::Layout::None && nameTagViews < 0) {
+        /* The tag in the name does not say half or full: the size of the video does, by the rule the players share
+         * (a single picture's shape holds half views). A mode that the stream's own mark has set is left alone. */
+        for (int i = 0; i < int(videoTracks.size()); i++) {
+            const QSize size = videoTracks[i].value(QMediaMetaData::Resolution).toSize();
+            if (inputModes[i] == defaultInputMode && size.isValid() && !Stereo::Video::views(size, QSize(), QSize(), -1, nameTagLayout).full)
+                inputModes[i] = halfInputMode(inputModes[i]);
+        }
+    }
+#endif
 
     cache.insert(url, *this);
     return true;
@@ -173,6 +236,7 @@ void MetaData::detectViaFFprobe(const QUrl& url, InputMode& defaultInputMode, Su
                 QString layout = doc["format"]["tags"]["StereoscopicLayout"].toString();
                 QString halfWidth = doc["format"]["tags"]["StereoscopicHalfWidth"].toString();
                 QString halfHeight = doc["format"]["tags"]["StereoscopicHalfHeight"].toString();
+                const bool matroska = doc["format"]["format_name"].toString().contains("matroska");
                 if (layout == "SideBySideRF")
                     defaultInputMode = (halfWidth == "1") ? Input_Right_Left_Half : Input_Right_Left;
                 else if (layout == "SideBySideLF")
@@ -202,8 +266,16 @@ void MetaData::detectViaFFprobe(const QUrl& url, InputMode& defaultInputMode, Su
                                         bool inverted = (sideDataArray[j]["inverted"].toVariant().toInt() == 1);
                                         if (layout == "top and bottom") {
                                             inputModes.last() = (inverted ? Input_Bottom_Top : Input_Top_Bottom);
+#ifdef HAVE_STEREO_LAYER
+                                            if (!fullViews(streamArray[i], matroska, Stereo::Picture::Layout::TopAndBottom))
+                                                inputModes.last() = halfInputMode(inputModes.last());
+#endif
                                         } else if (layout == "side by side") {
                                             inputModes.last() = (inverted ? Input_Right_Left : Input_Left_Right);
+#ifdef HAVE_STEREO_LAYER
+                                            if (!fullViews(streamArray[i], matroska, Stereo::Picture::Layout::SideBySide))
+                                                inputModes.last() = halfInputMode(inputModes.last());
+#endif
                                         } else if (layout == "frame alternate") {
                                             inputModes.last() = (inverted ? Input_Alternating_RL : Input_Alternating_LR);
                                         } else if (layout == "2D") {

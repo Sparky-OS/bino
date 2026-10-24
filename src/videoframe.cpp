@@ -18,6 +18,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifdef HAVE_STEREO_LAYER
+# include <video.h>
+#endif
+
 #include "videoframe.hpp"
 #include "log.hpp"
 
@@ -73,10 +77,13 @@ void VideoFrame::update(InputMode im, SurroundMode sm, const QVideoFrame& frame,
         LOG_FIREHOSE("videoframe receives new %dx%d frame with pixel format %s", width, height,
                 qPrintable(QVideoFrameFormat::pixelFormatToString(qframe.pixelFormat())));
         if (im == Input_Unknown) {
+            /* Two pictures next to each other: at least three times as wide as high. The shape never says top and bottom. */
+#ifdef HAVE_STEREO_LAYER
+            if (width % 2 == 0 && Stereo::Video::sideBySideByShape(QSize(width, height)))
+#else
             if (width % 2 == 0 && aspectRatio >= 3.0f)
+#endif
                 im = Input_Left_Right;
-            else if (height % 2 == 0 && aspectRatio < 1.0f)
-                im = Input_Top_Bottom;
             else
                 im = Input_Mono;
             LOG_FIREHOSE("videoframe guesses input mode from aspect ratio %g: %s", aspectRatio, inputModeToString(im));
