@@ -115,6 +115,10 @@ private:
     bool _frameIsNew;
     bool _frameWasSerialized;
     bool _swapEyes;
+#if BINO_STEREO_DESKTOP
+    bool _defaultSwapEyes;
+    QUrl _sourceUrl;
+#endif
     // for rendering the audio overlay:
     OverlayAudio _overlayAudio;
     // for rendering subtitles:
@@ -194,6 +198,7 @@ public:
     int videoTrack() const;
     int audioTrack() const;
     int subtitleTrack() const;
+    bool inputDeclared() const;
     InputMode inputMode() const;                        // this might be unknown
     InputMode assumeInputMode() const;                  // this is never unknown
     bool assumeStereoInputMode() const;                 // is the assumed mode stereo?

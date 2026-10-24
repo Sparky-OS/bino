@@ -1190,6 +1190,12 @@ void Gui::updateActions()
     for (int i = 0; i < _3dInputActionGroup->actions().size(); i++) {
         QAction* a = _3dInputActionGroup->actions()[i];
         a->setChecked(a->data().toInt() == int(inputMode));
+#if BINO_STEREO_DESKTOP
+        const auto mode = static_cast<InputMode>(a->data().toInt());
+        const bool half = mode == Input_Left_Right_Half || mode == Input_Right_Left_Half
+            || mode == Input_Top_Bottom_Half || mode == Input_Bottom_Top_Half;
+        a->setVisible(!Bino::instance()->inputDeclared() && !half);
+#endif
     }
 #if !BINO_STEREO_DESKTOP
     for (int i = 0; i < _3dOutputActionGroup->actions().size(); i++) {

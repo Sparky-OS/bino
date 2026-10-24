@@ -42,13 +42,18 @@ VideoSink::VideoSink(VideoFrame* frame, VideoFrame* extFrame, bool* frameIsNew) 
 void VideoSink::newPlaylistEntry(const PlaylistEntry& entry, const MetaData& metaData)
 {
     frameCounter = 0;
+    needExtFrame = false;
     lastFrameWasValid = false;
 
     int vt = entry.videoTrack;
     if (vt < 0)
         vt = 0;
 
-    inputMode = entry.inputMode;
+    inputDeclared = false;
+#if BINO_STEREO_DESKTOP
+    inputDeclared = vt < metaData.declaredInputs.size() && metaData.declaredInputs[vt];
+#endif
+    inputMode = inputDeclared ? metaData.inputModes.value(vt, Input_Unknown) : entry.inputMode;
     if (inputMode == Input_Unknown) {
         if (vt < metaData.inputModes.size())
             inputMode = metaData.inputModes[vt];

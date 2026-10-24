@@ -23,6 +23,8 @@
 #include "bino.hpp"
 #if BINO_STEREO_DESKTOP
 #include "videotextureimporter.hpp"
+#include <QSettings>
+#include <QCryptographicHash>
 #endif
 #include "log.hpp"
 #include "frametrace.hpp"
@@ -34,6 +36,14 @@
 
 
 static Bino* binoSingleton = nullptr;
+
+#if BINO_STEREO_DESKTOP
+static QString correctionKey(const QUrl& url)
+{
+    return QStringLiteral("Files/") + QString::fromLatin1(QCryptographicHash::hash(
+        url.toEncoded(QUrl::FullyEncoded), QCryptographicHash::Sha256).toHex()) + '/';
+}
+#endif
 
 Bino::Bino(ScreenType screenType, const Screen& screen, bool swapEyes) :
     _wantExit(false),
@@ -55,6 +65,9 @@ Bino::Bino(ScreenType screenType, const Screen& screen, bool swapEyes) :
     _frameIsNew(true),
     _frameWasSerialized(true),
     _swapEyes(swapEyes),
+#if BINO_STEREO_DESKTOP
+    _defaultSwapEyes(swapEyes),
+#endif
     _overlayUIShow(false)
 {
     Q_ASSERT(!binoSingleton);
@@ -272,6 +285,13 @@ void Bino::mediaChanged(PlaylistEntry entry)
         QGuiApplication::processEvents();
     }
     _playerIgnoreNextStop = false;
+#if BINO_STEREO_DESKTOP
+    _sourceUrl = entry.url;
+    QSettings corrections;
+    _swapEyes = corrections.value(correctionKey(_sourceUrl) + "swapEyes", _defaultSwapEyes).toBool();
+    if (entry.inputMode == Input_Unknown)
+        entry.inputMode = inputModeFromString(corrections.value(correctionKey(_sourceUrl) + "inputMode").toString());
+#endif
     if (!entry.noMedia()) {
         // Get meta data
         MetaData metaData;
@@ -422,14 +442,17 @@ void Bino::setSwapEyes(bool s)
 {
     if (_swapEyes != s) {
         _swapEyes = s;
+#if BINO_STEREO_DESKTOP
+        if (!_sourceUrl.isEmpty())
+            QSettings().setValue(correctionKey(_sourceUrl) + "swapEyes", s);
+#endif
         emit stateChanged();
     }
 }
 
 void Bino::toggleSwapEyes()
 {
-    _swapEyes = !_swapEyes;
-    emit stateChanged();
+    setSwapEyes(!_swapEyes);
 }
 
 void Bino::setVideoTrack(int i)
@@ -437,6 +460,14 @@ void Bino::setVideoTrack(int i)
     LOG_DEBUG("changing video track to %d", i);
     if (playlistMode()) {
         _player->setActiveVideoTrack(i);
+#if BINO_STEREO_DESKTOP
+        MetaData metaData;
+        metaData.detectCached(_sourceUrl);
+        PlaylistEntry entry(_sourceUrl);
+        entry.videoTrack = i;
+        entry.inputMode = inputModeFromString(QSettings().value(correctionKey(_sourceUrl) + "inputMode").toString());
+        _videoSink->newPlaylistEntry(entry, metaData);
+#endif
         emit stateChanged();
     }
 }
@@ -461,6 +492,12 @@ void Bino::setSubtitleTrack(int i)
 
 void Bino::setInputMode(InputMode mode)
 {
+#if BINO_STEREO_DESKTOP
+    if (_videoSink->inputDeclared)
+        return;
+    if (!_sourceUrl.isEmpty())
+        QSettings().setValue(correctionKey(_sourceUrl) + "inputMode", inputModeToString(mode));
+#endif
     _videoSink->inputMode = mode;
     _frame.inputMode = mode;
     _frame.reUpdate();
@@ -540,6 +577,11 @@ int Bino::subtitleTrack() const
     else if (playlistMode())
         t = _player->activeSubtitleTrack();
     return t;
+}
+
+bool Bino::inputDeclared() const
+{
+    return _videoSink && _videoSink->inputDeclared;
 }
 
 InputMode Bino::inputMode() const

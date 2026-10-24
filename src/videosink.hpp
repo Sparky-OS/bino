@@ -38,6 +38,7 @@ public:
     VideoFrame* extFrame; // extension to target video frame, for alternating stereo
     bool *frameIsNew;     // flag to set when the target frame represents a new frame
     bool needExtFrame;    // flag to set in alternating stereo when extFrame is not filled yet
+    bool inputDeclared = false;
     InputMode inputMode;  // input mode of current media
     SurroundMode surroundMode; // surround mode of the current media
     bool lastFrameWasValid; // last frame of current media was valid
