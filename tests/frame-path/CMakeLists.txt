@@ -46,7 +46,7 @@ target_compile_definitions(output-modes-probe PRIVATE HAVE_STEREO_LAYER)
 target_link_libraries(output-modes-probe PRIVATE Qt6::OpenGLWidgets Qt6::Multimedia Stereo::Layer)
 if(BINO_STEREO_DESKTOP)
     target_include_directories(output-modes-probe PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-    target_link_libraries(output-modes-probe PRIVATE PkgConfig::NativeVideo PkgConfig::NativeDeclaration Qt6::GuiPrivate Qt6::MultimediaPrivate)
+    target_link_libraries(output-modes-probe PRIVATE PkgConfig::NativeVideo PkgConfig::NativeDeclaration PkgConfig::NativeContent Qt6::GuiPrivate Qt6::MultimediaPrivate)
 endif()
 
 add_executable(deferred-probe deferred.cpp ../../src/videoframe.cpp ../../src/modes.cpp ../../src/log.cpp)

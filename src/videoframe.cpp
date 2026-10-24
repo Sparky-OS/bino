@@ -75,9 +75,17 @@ void VideoFrame::update(InputMode im, SurroundMode sm, const QVideoFrame& frame,
         width = qframe.width();
         height = qframe.height();
         aspectRatio = float(width) / height;
+#if BINO_STEREO_DESKTOP
+        const QSize sar = frame.surfaceFormat().pixelAspectRatio();
+        if (sar.width() > 0 && sar.height() > 0)
+            aspectRatio *= float(sar.width()) / sar.height();
+#endif
         LOG_FIREHOSE("videoframe receives new %dx%d frame with pixel format %s", width, height,
                 qPrintable(QVideoFrameFormat::pixelFormatToString(qframe.pixelFormat())));
         if (im == Input_Unknown) {
+#if BINO_STEREO_DESKTOP
+            im = Input_Mono;
+#else
             /* Two pictures next to each other: at least three times as wide as high. The shape never says top and bottom. */
 #ifdef HAVE_STEREO_LAYER
             if (width % 2 == 0 && Stereo::Video::sideBySideByShape(QSize(width, height)))
@@ -88,9 +96,13 @@ void VideoFrame::update(InputMode im, SurroundMode sm, const QVideoFrame& frame,
             else
                 im = Input_Mono;
             LOG_FIREHOSE("videoframe guesses input mode from aspect ratio %g: %s", aspectRatio, inputModeToString(im));
+#endif
         }
         inputMode = im;
         if (sm == Surround_Unknown) {
+#if BINO_STEREO_DESKTOP
+            sm = Surround_Off;
+#else
             if (width == height && (inputMode == Input_Top_Bottom || inputMode == Input_Bottom_Top))
                 sm = Surround_360;
             else if (width == 2 * height && inputMode == Input_Mono)
@@ -114,6 +126,7 @@ void VideoFrame::update(InputMode im, SurroundMode sm, const QVideoFrame& frame,
             else
                 sm = Surround_Off;
             LOG_FIREHOSE("videoframe guesses surround mode %s from frame size", surroundModeToString(sm));
+#endif
         }
         surroundMode = sm;
         bool fallbackToImage = true;

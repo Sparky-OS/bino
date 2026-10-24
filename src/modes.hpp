@@ -38,7 +38,17 @@ enum InputMode {
     Input_Right_Left_Half = 9, // stereoscopic video, left eye right, right eye left, both half width
     Input_Alternating_LR = 10, // stereoscopic video, alternating frames, left first
     Input_Alternating_RL = 11, // stereoscopic video, alternating frames, right first
+    Input_Rows_LR = 12,
+    Input_Rows_RL = 13,
+    Input_Columns_LR = 14,
+    Input_Columns_RL = 15,
+    Input_Checkerboard_LR = 16,
+    Input_Checkerboard_RL = 17,
+    Input_Quincunx_LR = 18,
+    Input_Quincunx_RL = 19,
 };
+
+InputMode inputModeFromPacking(int layout, int order, int anaglyph = 0);
 
 const char* inputModeToString(InputMode mode);
 QString inputModeToStringUI(InputMode mode);

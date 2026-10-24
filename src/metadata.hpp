@@ -43,6 +43,7 @@ public:
     QList<QMediaMetaData> subtitleTracks;
     // additional information for each video track:
     QList<InputMode> inputModes;
+    QList<bool> declaredInputs;
     QList<SurroundMode> surroundModes;
 
     MetaData();

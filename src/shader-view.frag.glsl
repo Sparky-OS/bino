@@ -26,6 +26,8 @@ uniform bool showOverlayAudio;
 uniform bool showOverlaySubtitle;
 uniform bool showOverlayUI;
 uniform bool nativeSamples;
+uniform int sampleLayout;
+uniform int sourceView;
 uniform float relative_width;
 uniform float relative_height;
 uniform float view_offset_x;
@@ -97,7 +99,16 @@ void main(void)
         float y_inside = step(0.0, vty) * step(0.0, 1.0 - vty);
         float tx = view_offset_x + view_factor_x * vtx;
         float ty = view_offset_y + view_factor_y * vty;
-        if (nativeSamples) {
+        if (sampleLayout != 0) {
+            ivec2 size = textureSize(frameTex, 0);
+            ivec2 viewSize = sampleLayout == 1 ? ivec2(size.x, size.y / 2) : ivec2(size.x / 2, size.y);
+            ivec2 pixel = clamp(ivec2(vec2(vtx, vty) * vec2(viewSize)), ivec2(0), viewSize - 1);
+            if (sampleLayout == 1)
+                pixel.y = 2 * pixel.y + sourceView;
+            else
+                pixel.x = 2 * pixel.x + (sampleLayout == 3 ? ((pixel.y & 1) ^ sourceView) : sourceView);
+            rgb = x_inside * y_inside * texelFetch(frameTex, pixel, 0).rgb;
+        } else if (nativeSamples) {
             ivec2 size = textureSize(frameTex, 0);
             ivec2 pixel = clamp(ivec2(vec2(tx, ty) * vec2(size)), ivec2(0), size - 1);
             rgb = x_inside * y_inside * texelFetch(frameTex, pixel, 0).rgb;

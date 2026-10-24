@@ -35,6 +35,11 @@
 #endif
 
 #include "metadata.hpp"
+#if BINO_STEREO_DESKTOP
+#include <stereo-content.h>
+#include <QFile>
+#include <time.h>
+#endif
 #include "tools.hpp"
 #include "log.hpp"
 
@@ -80,6 +85,7 @@ bool MetaData::detectCached(const QUrl& url, QString* errMsg)
     /* Detection via file name hints - this sets default modes that can be overridden per stream */
     InputMode defaultInputMode = Input_Unknown;
     SurroundMode defaultSurroundMode = Surround_Unknown;
+#if !BINO_STEREO_DESKTOP
     QString fileName = url.fileName();
     QString extension = getExtension(fileName);
 #ifdef HAVE_STEREO_LAYER
@@ -148,6 +154,8 @@ bool MetaData::detectCached(const QUrl& url, QString* errMsg)
         LOG_DEBUG("guessing surround mode %s from file name %s", surroundModeToString(defaultSurroundMode), qPrintable(fileName));
     }
 
+#endif
+
     /* Detection via QMediaPlayer */
     QMediaPlayer player;
     bool failure = false;
@@ -165,7 +173,9 @@ bool MetaData::detectCached(const QUrl& url, QString* errMsg)
     do {
         // while waiting for the QMediaPlayer meta data to arrive, run ffprobe in parallel
         if (!didFFprobe) {
+#if !BINO_STEREO_DESKTOP
             detectViaFFprobe(url, defaultInputMode, defaultSurroundMode);
+#endif
             didFFprobe = true;
         }
         QGuiApplication::processEvents();
@@ -184,7 +194,7 @@ bool MetaData::detectCached(const QUrl& url, QString* errMsg)
     subtitleTracks = player.subtitleTracks();
     inputModes.resize(videoTracks.size(), defaultInputMode);
     surroundModes.resize(videoTracks.size(), defaultSurroundMode);
-#ifdef HAVE_STEREO_LAYER
+#if defined(HAVE_STEREO_LAYER) && !BINO_STEREO_DESKTOP
     if (nameTagLayout != Stereo::Picture::Layout::None && nameTagViews < 0) {
         /* The tag in the name does not say half or full: the size of the video does, by the rule the players share
          * (a single picture's shape holds half views). A mode that the stream's own mark has set is left alone. */
@@ -196,6 +206,37 @@ bool MetaData::detectCached(const QUrl& url, QString* errMsg)
     }
 #endif
 
+#if BINO_STEREO_DESKTOP
+    declaredInputs.resize(videoTracks.size(), false);
+    QFile source(url.isLocalFile() ? url.toLocalFile() : QString());
+    if (url.isLocalFile() && source.open(QIODevice::ReadOnly)) {
+        for (int track = 0; track < videoTracks.size(); ++track) {
+            timespec now;
+            clock_gettime(CLOCK_MONOTONIC, &now);
+            StereoContentRequest request = {};
+            request.size = sizeof(request);
+            request.abi = STEREO_CONTENT_ABI;
+            request.fd = source.handle();
+            request.deadline_us = qint64(now.tv_sec) * 1000000 + now.tv_nsec / 1000 + 400000;
+            request.max_bytes = 4 * 1024 * 1024;
+            request.max_packets = 128;
+            request.video_track_plus_one = track + 1;
+            StereoContentResult result = {};
+            result.size = sizeof(result);
+            if (stereo_content_inspect(&request, &result) < 0 || result.status != STEREO_CONTENT_OK)
+                continue;
+            if (result.stereo >= 0) {
+                declaredInputs[track] = true;
+                inputModes[track] = inputModeFromPacking(result.layout, result.order, result.anaglyph);
+            }
+            surroundModes[track] = result.coverage == 180 ? Surround_180
+                    : result.coverage == 360 ? Surround_360 : Surround_Off;
+            LOG_DEBUG("shared content: track=%d stereo=%d packing=%d order=%d raster=%dx%d sar=%d:%d",
+                    track, result.stereo, result.layout, result.order, result.width, result.height,
+                    result.sar_num, result.sar_den);
+        }
+    }
+#endif
     cache.insert(url, *this);
     return true;
 }

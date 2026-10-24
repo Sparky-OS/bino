@@ -23,9 +23,36 @@
 #include "modes.hpp"
 
 
+InputMode inputModeFromPacking(int layout, int order, int anaglyph)
+{
+    if (anaglyph)
+        return Input_Unknown;
+    switch (layout) {
+    case 0: return Input_Mono;
+    case 1: return order ? Input_Right_Left : Input_Left_Right;
+    case 2: return order ? Input_Bottom_Top : Input_Top_Bottom;
+    case 4: return order ? Input_Rows_RL : Input_Rows_LR;
+    case 5: return order ? Input_Columns_RL : Input_Columns_LR;
+    case 6: return order ? Input_Checkerboard_RL : Input_Checkerboard_LR;
+    case 7: return order ? Input_Quincunx_RL : Input_Quincunx_LR;
+    case 8:
+    case 9: return order ? Input_Alternating_RL : Input_Alternating_LR;
+    default: return Input_Unknown;
+    }
+}
+
 const char* inputModeToString(InputMode mode)
 {
     switch (mode) {
+    case Input_Rows_LR: return "rows-left-right";
+    case Input_Rows_RL: return "rows-right-left";
+    case Input_Columns_LR: return "columns-left-right";
+    case Input_Columns_RL: return "columns-right-left";
+    case Input_Checkerboard_LR: return "checkerboard-left-right";
+    case Input_Checkerboard_RL: return "checkerboard-right-left";
+    case Input_Quincunx_LR: return "quincunx-left-right";
+    case Input_Quincunx_RL: return "quincunx-right-left";
+
     case Input_Unknown:
         return "unknown";
         break;
@@ -69,6 +96,15 @@ const char* inputModeToString(InputMode mode)
 QString inputModeToStringUI(InputMode mode)
 {
     switch (mode) {
+    case Input_Rows_LR: return QCoreApplication::translate("Mode", "Input alternating rows, left first");
+    case Input_Rows_RL: return QCoreApplication::translate("Mode", "Input alternating rows, right first");
+    case Input_Columns_LR: return QCoreApplication::translate("Mode", "Input alternating columns, left first");
+    case Input_Columns_RL: return QCoreApplication::translate("Mode", "Input alternating columns, right first");
+    case Input_Checkerboard_LR: return QCoreApplication::translate("Mode", "Input checkerboard, left first");
+    case Input_Checkerboard_RL: return QCoreApplication::translate("Mode", "Input checkerboard, right first");
+    case Input_Quincunx_LR: return QCoreApplication::translate("Mode", "Input side by side quincunx, left first");
+    case Input_Quincunx_RL: return QCoreApplication::translate("Mode", "Input side by side quincunx, right first");
+
     case Input_Unknown:
         return QCoreApplication::translate("Mode", "Input autodetection");
         break;
@@ -113,6 +149,14 @@ InputMode inputModeFromString(const QString& s, bool* ok)
 {
     InputMode mode = Input_Unknown;
     bool r = true;
+    if (s == "rows-left-right") { if (ok) *ok = true; return Input_Rows_LR; }
+    if (s == "rows-right-left") { if (ok) *ok = true; return Input_Rows_RL; }
+    if (s == "columns-left-right") { if (ok) *ok = true; return Input_Columns_LR; }
+    if (s == "columns-right-left") { if (ok) *ok = true; return Input_Columns_RL; }
+    if (s == "checkerboard-left-right") { if (ok) *ok = true; return Input_Checkerboard_LR; }
+    if (s == "checkerboard-right-left") { if (ok) *ok = true; return Input_Checkerboard_RL; }
+    if (s == "quincunx-left-right") { if (ok) *ok = true; return Input_Quincunx_LR; }
+    if (s == "quincunx-right-left") { if (ok) *ok = true; return Input_Quincunx_RL; }
     if (s == "mono")
         mode = Input_Mono;
     else if (s == "top-bottom")

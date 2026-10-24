@@ -1283,6 +1283,8 @@ void Bino::preRenderProcess(int screenWidth, int screenHeight,
     case Input_Mono:
         viewCount = 1;
         break;
+    case Input_Rows_LR:
+    case Input_Rows_RL:
     case Input_Top_Bottom:
     case Input_Bottom_Top:
         frameDisplayAspectRatio *= 2.0f;
@@ -1291,6 +1293,12 @@ void Bino::preRenderProcess(int screenWidth, int screenHeight,
     case Input_Bottom_Top_Half:
         viewHeight /= 2;
         break;
+    case Input_Columns_LR:
+    case Input_Columns_RL:
+    case Input_Checkerboard_LR:
+    case Input_Checkerboard_RL:
+    case Input_Quincunx_LR:
+    case Input_Quincunx_RL:
     case Input_Left_Right:
     case Input_Right_Left:
         frameDisplayAspectRatio /= 2.0f;
@@ -1424,9 +1432,32 @@ void Bino::render(
     float viewFactorX = 1.0f;
     float viewOffsetY = 0.0f;
     float viewFactorY = 1.0f;
+    int sampleLayout = 0;
     if (_swapEyes)
         view = (view == 0 ? 1 : 0);
     switch (_frame.inputMode) {
+    case Input_Rows_LR:
+    case Input_Rows_RL:
+        sampleLayout = 1;
+        viewFactorY = 0.5f;
+        frameAspectRatio *= 2.0f;
+        if (_frame.inputMode == Input_Rows_RL) view = 1 - view;
+        break;
+    case Input_Columns_LR:
+    case Input_Columns_RL:
+    case Input_Checkerboard_LR:
+    case Input_Checkerboard_RL:
+        sampleLayout = (_frame.inputMode == Input_Columns_LR || _frame.inputMode == Input_Columns_RL) ? 2 : 3;
+        viewFactorX = 0.5f;
+        frameAspectRatio /= 2.0f;
+        if (_frame.inputMode == Input_Columns_RL || _frame.inputMode == Input_Checkerboard_RL) view = 1 - view;
+        break;
+    case Input_Quincunx_LR:
+    case Input_Quincunx_RL:
+        viewFactorX = 0.5f;
+        viewOffsetX = ((view ^ (_frame.inputMode == Input_Quincunx_RL)) ? 0.5f : 0.0f);
+        frameAspectRatio /= 2.0f;
+        break;
     case Input_Unknown: // cannot happen, update() sets a known mode
     case Input_Mono:
         // nothing to do
@@ -1532,6 +1563,8 @@ void Bino::render(
         storedView.transpose();
     _viewPrg.setUniformValue("nativeSamples", !finalRenderingStep
             && storedView == QSize(texWidth, texHeight));
+    _viewPrg.setUniformValue("sampleLayout", sampleLayout);
+    _viewPrg.setUniformValue("sourceView", view);
     _viewPrg.setUniformValue("rotation", rotation);
     _viewPrg.setUniformValue("view_offset_x", viewOffsetX);
     _viewPrg.setUniformValue("view_factor_x", viewFactorX);
