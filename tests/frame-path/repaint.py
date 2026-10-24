@@ -54,6 +54,7 @@ if native:
  assert phase_paints('resize')[-1]['width']*4==phase_paints('restore')[-1]['width']*3
 # A repaint must include both toolkit buffers for the same source PTS.
 if not native and paints[-1]['stereo']:
+ assert len(paints)%2==0, 'incomplete stereo pair'
  for left,right in zip(paints[::2],paints[1::2]):
   assert (left['buffer'],right['buffer'])==(0,1) and left['pts']==right['pts'],('unpaired targets',left,right)
 idle={name:len(phase_paints(name)) for name in ('idle','idle-again')}
@@ -63,4 +64,4 @@ excess=sum(max(0,n-allowed) for n in low.values())
 result={'source_channels':channels,'maximum_error':worst,'idle_paints':idle,'low_rate_paints_by_pts':dict(low),'excess_low_rate_paints':excess,'native':native,'paint_count':len(paints)}
 print(json.dumps(result,indent=2),flush=True)
 assert all(n==0 for n in idle.values()),('unrequested idle repaints',idle)
-assert len(low)>=3 and excess==0,('duplicate hidden-overlay playback paints',low)
+assert set(low)=={500000,750000,1000000,1250000} and excess==0,('duplicate hidden-overlay playback paints',low)

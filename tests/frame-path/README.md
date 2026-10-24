@@ -282,3 +282,41 @@ P010/P016 normalized R16 samples use denominator 65535, whereas the existing
 by 65535/65280 before the matrix corrects both import and mapping; 8-bit samples
 keep scale 1. The retained pre-correction Main10 runs fail with maximum RGB
 error 3 on both paths. This is an SDR BT.709 test, not HDR proof.
+
+## Demand-driven repainting (milestone 5)
+
+Create the low-rate fixture from the RGB pixel fixture without changing its pixels:
+
+```
+ffmpeg -v error -y -i pixels/stereo.mkv -vf setpts=6*PTS -r 4 -c:v ffv1 -pix_fmt bgr0 -threads 4 repaint.mkv
+```
+
+Run `pixel-case.sh` in a fresh isolated compositor with `PIXEL_REPAINT=1`,
+`PIXEL_CLIP` pointing at that fixture, and `PIXEL_TIMEOUT=40`.
+The native test uses a 640x360 parent and source-size 320x180 eyes.
+Provide the Breeze playback icons at `/work/test-icons/breeze-dark` and a Qt SVG
+icon engine matching the runtime Qt version; missing icons fail the probe.
+Check with `repaint.py CASE --clip repaint.mkv`.
+
+The observer records actual `paintGL` calls, their source PTS, the native pair,
+and the ordinary overlay target. It never requests a repaint itself.
+After observing a source frame, the timeline pauses, waits idle, reveals and
+locks controls, resumes progress, pauses, changes stereo input to mono and back,
+resizes, restores, unlocks, reveals controls again, waits for expiry, waits idle,
+and hides/shows the window. Action timers use precise deadlines.
+
+The checker compares both native eyes against independently decoded source RGB
+at every captured timestamp with the existing tolerance of one code value.
+For Qt stereo and ordinary fallback, it checks unobscured source-size targets;
+the stereo path additionally requires consecutive left/right buffers at one PTS.
+All four low-rate source timestamps must appear exactly once per target.
+Both paused idle windows must have zero paints. Native controls must animate,
+retain their lock, change the pause icon, expire, and survive resize/exposure.
+`--swap-expected` must fail the source gate.
+
+The pre-fix timer fails with repeated identical frames and paused idle paints,
+after the source and overlay assertions pass. The fix keeps the 40 ms cadence
+only while visible playback controls need progress animation, schedules the
+remaining expiry deadline when paused, and uses frame/state/input notifications
+for other changes. Static locked controls need no timer. The OFF build retains
+its existing continuous update for alternating output.
