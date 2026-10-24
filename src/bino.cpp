@@ -1440,6 +1440,11 @@ void Bino::render(
     _viewPrg.setUniformValue("showOverlayAudio", !_frame.isValid());
     _viewPrg.setUniformValue("showOverlaySubtitle", !_frame.subtitle.isEmpty());
     _viewPrg.setUniformValue("showOverlayUI", _overlayUIShow);
+    QSize storedView(qRound(_frame.width * viewFactorX), qRound(_frame.height * viewFactorY));
+    if (rotation == 1 || rotation == 3)
+        storedView.transpose();
+    _viewPrg.setUniformValue("nativeSamples", !finalRenderingStep
+            && storedView == QSize(texWidth, texHeight));
     _viewPrg.setUniformValue("rotation", rotation);
     _viewPrg.setUniformValue("view_offset_x", viewOffsetX);
     _viewPrg.setUniformValue("view_factor_x", viewFactorX);

@@ -106,3 +106,14 @@ The llvmpipe control additionally uses 256×128 eyes (`--width 256 --height 128`
 The uncorrected renderer already blends sharp address transitions at 320×180 on llvmpipe; retain that failed source check and compare its pixels before and after separately.
 The power-of-two software control and all 320×180 AMD controls must pass the source check.
 This test does not relax pixel tolerance to accommodate the existing software sampling issue.
+
+## Native sample preservation
+
+At one stored pixel per target pixel, the view and display shaders use `texelFetch`.
+This avoids filtered sampling across sharp source boundaries on llvmpipe at 320×180.
+It does not change the scaling/filtering path when the target dimensions differ.
+The 320×180 software case must now pass the same source check as the AMD case, with the same one-code-value tolerance and both eyes checked.
+Keep a capture set from the preceding commit as a failing control.
+Run `--swap-expected` and `--stale-expected` on the corrected software captures; both must still fail.
+Compare all common AMD stereo, mono and non-stereo-target captures with the preceding commit byte for byte in RGB.
+Passing this sampling test alone does not establish native-resolution delivery to the compositor.

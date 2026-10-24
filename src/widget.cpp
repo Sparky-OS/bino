@@ -383,6 +383,8 @@ void Widget::paintGL()
     _displayPrg.setUniformValue("view1", 1);
     _displayPrg.setUniformValue("relativeWidth", relWidth);
     _displayPrg.setUniformValue("relativeHeight", relHeight);
+    _displayPrg.setUniformValue("nativeSamples", width == viewWidth && height == viewHeight
+            && relWidth == 1.0f && relHeight == 1.0f);
     QPoint globalLowerLeft = mapToGlobal(QPoint(0, height - 1));
     _displayPrg.setUniformValue("fragOffsetX", float(globalLowerLeft.x()));
     _displayPrg.setUniformValue("fragOffsetY", float(screen()->geometry().height() - 1 - globalLowerLeft.y()));

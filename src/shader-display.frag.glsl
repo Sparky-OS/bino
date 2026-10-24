@@ -25,6 +25,7 @@ uniform float relativeWidth;
 uniform float relativeHeight;
 uniform float fragOffsetX;
 uniform float fragOffsetY;
+uniform bool nativeSamples;
 
 // This must be the same as OutputMode from modes.hpp:
 const int Output_Left = 0;
@@ -112,10 +113,15 @@ void main(void)
             }
         }
     } else if (outputMode == Output_Left || outputMode == Output_Right) {
-        if (outputModeLeftRightView == 0)
+        if (nativeSamples) {
+            ivec2 pixel = ivec2(gl_FragCoord.xy);
+            rgb = outputModeLeftRightView == 0
+                    ? texelFetch(view0, pixel, 0).rgb : texelFetch(view1, pixel, 0).rgb;
+        } else if (outputModeLeftRightView == 0) {
             rgb = texture(view0, vec2(tx, ty)).rgb;
-        else
+        } else {
             rgb = texture(view1, vec2(tx, ty)).rgb;
+        }
     } else if (outputMode == Output_Left_Right || outputMode == Output_Left_Right_Half) {
         if (tx < 0.5) {
             if (ty >= 0.0 && ty <= 1.0)

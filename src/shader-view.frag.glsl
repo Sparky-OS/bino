@@ -25,6 +25,7 @@ uniform sampler2D overlayTex2; // ui
 uniform bool showOverlayAudio;
 uniform bool showOverlaySubtitle;
 uniform bool showOverlayUI;
+uniform bool nativeSamples;
 uniform float relative_width;
 uniform float relative_height;
 uniform float view_offset_x;
@@ -96,7 +97,13 @@ void main(void)
         float y_inside = step(0.0, vty) * step(0.0, 1.0 - vty);
         float tx = view_offset_x + view_factor_x * vtx;
         float ty = view_offset_y + view_factor_y * vty;
-        rgb = x_inside * y_inside * texture(frameTex, vec2(tx, ty)).rgb;
+        if (nativeSamples) {
+            ivec2 size = textureSize(frameTex, 0);
+            ivec2 pixel = clamp(ivec2(vec2(tx, ty) * vec2(size)), ivec2(0), size - 1);
+            rgb = x_inside * y_inside * texelFetch(frameTex, pixel, 0).rgb;
+        } else {
+            rgb = x_inside * y_inside * texture(frameTex, vec2(tx, ty)).rgb;
+        }
     }
     if (showOverlayAudio) {
         vec4 ovl0 = texture(overlayTex0, vec2(overlay_x, overlay_y)).rgba;
