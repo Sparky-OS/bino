@@ -193,7 +193,11 @@ bool OverlayUI::redraw(int w, int h)
                 iconName += i < 4 ? "backward" : "forward";
                 iconFactor = 0.2f + qAbs(i - 4) * 0.2f;
             }
-            painter()->fillRect(_boxes[i], i == highlightedBox ? highlightColor : normalColor);
+            painter()->save();
+            painter()->setPen(Qt::NoPen);
+            painter()->setBrush(i == highlightedBox ? highlightColor : normalColor);
+            painter()->drawEllipse(_boxes[i]);
+            painter()->restore();
             QIcon icon = QIcon::fromTheme(iconName);
             float d = 0.5f * (_buttonSize * iconFactor - _buttonSize);
             QRectF iconRect = _boxes[i].marginsAdded(QMarginsF(d, d, d, d));
