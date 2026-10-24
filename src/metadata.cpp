@@ -223,7 +223,8 @@ bool MetaData::detectCached(const QUrl& url, QString* errMsg)
             request.video_track_plus_one = track + 1;
             StereoContentResult result = {};
             result.size = sizeof(result);
-            if (stereo_content_inspect(&request, &result) < 0 || result.status != STEREO_CONTENT_OK)
+            if (stereo_content_inspect(&request, &result) < 0
+                    || (result.status != STEREO_CONTENT_OK && result.status != STEREO_CONTENT_INCOMPLETE))
                 continue;
             if (result.stereo >= 0) {
                 declaredInputs[track] = true;

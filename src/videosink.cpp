@@ -43,6 +43,7 @@ void VideoSink::newPlaylistEntry(const PlaylistEntry& entry, const MetaData& met
 {
     frameCounter = 0;
     needExtFrame = false;
+    pendingFrame = QVideoFrame();
     lastFrameWasValid = false;
 
     int vt = entry.videoTrack;
@@ -82,6 +83,53 @@ void VideoSink::processNewFrame(const QVideoFrame& frame)
         LOG_FIREHOSE("video sink gets a valid frame");
         lastFrameWasValid = true;
     }
+
+#if BINO_STEREO_DESKTOP
+    if (frame.isValid()) {
+        const auto format = frame.surfaceFormat();
+        using Stereo = QVideoFrameFormat::StereoMode;
+        int layout = 0;
+        switch (format.stereoMode()) {
+        case Stereo::SideBySide: layout = 1; break;
+        case Stereo::TopBottom: layout = 2; break;
+        case Stereo::RowInterleaved: layout = 4; break;
+        case Stereo::ColumnInterleaved: layout = 5; break;
+        case Stereo::Checkerboard: layout = 6; break;
+        case Stereo::SideBySideQuincunx: layout = 7; break;
+        case Stereo::FrameSequence: layout = 8; break;
+        default: break;
+        }
+        if (layout) {
+            const bool inverted = format.stereoFlags().testFlag(QVideoFrameFormat::StereoFlag::RightEyeFirst);
+            const InputMode declared = inputModeFromPacking(layout, inverted, 0);
+            if (declared != inputMode)
+                needExtFrame = false;
+            inputMode = declared;
+            inputDeclared = true;
+        }
+    }
+#endif
+
+#if BINO_STEREO_DESKTOP
+    if (inputMode == Input_Alternating_LR || inputMode == Input_Alternating_RL) {
+        if (!needExtFrame) {
+            pendingFrame = frame;
+            needExtFrame = true;
+            ++frameCounter;
+            return;
+        }
+        // Publish both temporal views together, including on unrelated UI paints.
+        this->frame->update(inputMode, surroundMode, pendingFrame, frameCounter == 1, true);
+        this->extFrame->update(inputMode, surroundMode, frame, frameCounter == 1, true);
+        pendingFrame = QVideoFrame();
+        needExtFrame = false;
+        *frameIsNew = true;
+        ++frameCounter;
+        emit newVideoFrame();
+        return;
+    }
+    pendingFrame = QVideoFrame();
+#endif
 
     bool updateExtFrame;
     if (inputMode == Input_Alternating_LR || inputMode == Input_Alternating_RL) {
