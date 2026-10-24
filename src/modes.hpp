@@ -56,12 +56,54 @@ const char* surroundModeToString(SurroundMode mode);
 QString surroundModeToStringUI(SurroundMode mode);
 SurroundMode surroundModeFromString(const QString& s, bool* ok = nullptr);
 
+#if BINO_STEREO_DESKTOP
 /* Internal presentation targets. Screen output formats belong to the compositor. */
+#else
+/* Output mode: Is the output 2D or 3D, and in the latter case, how should
+ * the left and right view be arranged on screen? */
+// Note that this is mirrored in shader-display-frag.glsl!
+#endif
 enum OutputMode {
     Output_Left = 0,
+#if BINO_STEREO_DESKTOP
     Output_OpenGL_Stereo = 2
+#else
+    Output_Right = 1,
+    Output_OpenGL_Stereo = 2,
+    Output_Alternating = 3,
+    Output_HDMI_Frame_Pack = 4,
+    Output_Left_Right = 5,
+    Output_Left_Right_Half = 6,
+    Output_Right_Left = 7,
+    Output_Right_Left_Half = 8,
+    Output_Top_Bottom = 9,
+    Output_Top_Bottom_Half = 10,
+    Output_Bottom_Top = 11,
+    Output_Bottom_Top_Half = 12,
+    Output_Even_Odd_Rows = 13,
+    Output_Even_Odd_Columns = 14,
+    Output_Checkerboard = 15,
+    Output_Red_Cyan_Dubois = 16,
+    Output_Red_Cyan_FullColor = 17,
+    Output_Red_Cyan_HalfColor = 18,
+    Output_Red_Cyan_Monochrome = 19,
+    Output_Green_Magenta_Dubois = 20,
+    Output_Green_Magenta_FullColor = 21,
+    Output_Green_Magenta_HalfColor = 22,
+    Output_Green_Magenta_Monochrome = 23,
+    Output_Amber_Blue_Dubois = 24,
+    Output_Amber_Blue_FullColor = 25,
+    Output_Amber_Blue_HalfColor = 26,
+    Output_Amber_Blue_Monochrome = 27,
+    Output_Red_Green_Monochrome = 28,
+    Output_Red_Blue_Monochrome = 29
+#endif
 };
 const char* outputModeToString(OutputMode mode);
+#if !BINO_STEREO_DESKTOP
+QString outputModeToStringUI(OutputMode mode);
+OutputMode outputModeFromString(const QString& s, bool* ok = nullptr);
+#endif
 
 /* Loop mode for the playlist */
 

@@ -26,7 +26,9 @@
 
 #include "modes.hpp"
 #include "bino.hpp"
+#if BINO_STEREO_DESKTOP
 #include "nativevideolayer.hpp"
+#endif
 
 
 class Widget : public QOpenGLWidget, protected QOpenGLExtraFunctions
@@ -34,13 +36,20 @@ class Widget : public QOpenGLWidget, protected QOpenGLExtraFunctions
 Q_OBJECT
 
 private:
+#if BINO_STEREO_DESKTOP
     std::unique_ptr<NativeVideoLayer> _nativeLayer;
+#else
+    int _displayPrgOutputMode;
+#endif
     QTimer _updateTimer;
     QSize _sizeHint;
     int _width, _height;
     float _lastFrameRelWidth, _lastFrameRelHeight;
 
     OutputMode _outputMode;
+#if !BINO_STEREO_DESKTOP
+    int _alternatingLastView; // last view displayed in Mode_Alternating (0 or 1)
+#endif
 
     bool _inOverlayUIEvent;
     float _surroundVerticalFOVDefault;
@@ -58,7 +67,12 @@ private:
     unsigned int _quadVao;
     QOpenGLShaderProgram _displayPrg;
 
+#if BINO_STEREO_DESKTOP
     void rebuildDisplayPrgIfNecessary();
+#else
+    void rebuildDisplayPrgIfNecessary(OutputMode outputMode);
+#endif
+
     QPointF toView(const QPointF& pos) const;
 
 protected:
@@ -66,7 +80,13 @@ protected:
 
 public:
     ~Widget() override;
+#if BINO_STEREO_DESKTOP
     bool usesNativeVideo() const { return bool(_nativeLayer); }
+#else
+    bool usesNativeVideo() const { return false; }
+    void setOutputMode(OutputMode mode);
+#endif
+
     Widget(OutputMode outputMode, float surroundVerticalFOV, QWidget* parent = nullptr);
 
     bool isOpenGLStereo() const;

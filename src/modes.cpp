@@ -197,10 +197,278 @@ SurroundMode surroundModeFromString(const QString& s, bool* ok)
     return mode;
 }
 
+#if BINO_STEREO_DESKTOP
 const char* outputModeToString(OutputMode mode)
 {
     return mode == Output_OpenGL_Stereo ? "stereo" : "mono";
 }
+#else
+const char* outputModeToString(OutputMode mode)
+{
+    switch (mode) {
+    case Output_Left:
+        return "left";
+        break;
+    case Output_Right:
+        return "right";
+        break;
+    case Output_OpenGL_Stereo:
+        return "stereo";
+        break;
+    case Output_Alternating:
+        return "alternating";
+        break;
+    case Output_HDMI_Frame_Pack:
+        return "hdmi-frame-pack";
+        break;
+    case Output_Left_Right:
+        return "left-right";
+        break;
+    case Output_Left_Right_Half:
+        return "left-right-half";
+        break;
+    case Output_Right_Left:
+        return "right-left";
+        break;
+    case Output_Right_Left_Half:
+        return "right-left-half";
+        break;
+    case Output_Top_Bottom:
+        return "top-bottom";
+        break;
+    case Output_Top_Bottom_Half:
+        return "top-bottom-half";
+        break;
+    case Output_Bottom_Top:
+        return "bottom-top";
+        break;
+    case Output_Bottom_Top_Half:
+        return "bottom-top-half";
+        break;
+    case Output_Even_Odd_Rows:
+        return "even-odd-rows";
+        break;
+    case Output_Even_Odd_Columns:
+        return "even-odd-columns";
+        break;
+    case Output_Checkerboard:
+        return "checkerboard";
+        break;
+    case Output_Red_Cyan_Dubois:
+        return "red-cyan-dubois";
+        break;
+    case Output_Red_Cyan_FullColor:
+        return "red-cyan-fullcolor";
+        break;
+    case Output_Red_Cyan_HalfColor:
+        return "red-cyan-halfcolor";
+        break;
+    case Output_Red_Cyan_Monochrome:
+        return "red-cyan-monochrome";
+        break;
+    case Output_Green_Magenta_Dubois:
+        return "green-magenta-dubois";
+        break;
+    case Output_Green_Magenta_FullColor:
+        return "green-magenta-fullcolor";
+        break;
+    case Output_Green_Magenta_HalfColor:
+        return "green-magenta-halfcolor";
+        break;
+    case Output_Green_Magenta_Monochrome:
+        return "green-magenta-monochrome";
+        break;
+    case Output_Amber_Blue_Dubois:
+        return "amber-blue-dubois";
+        break;
+    case Output_Amber_Blue_FullColor:
+        return "amber-blue-fullcolor";
+        break;
+    case Output_Amber_Blue_HalfColor:
+        return "amber-blue-halfcolor";
+        break;
+    case Output_Amber_Blue_Monochrome:
+        return "amber-blue-monochrome";
+        break;
+    case Output_Red_Green_Monochrome:
+        return "red-green-monochrome";
+        break;
+    case Output_Red_Blue_Monochrome:
+        return "red-blue-monochrome";
+        break;
+    }
+    return nullptr;
+}
+
+QString outputModeToStringUI(OutputMode mode)
+{
+    switch (mode) {
+    case Output_Left:
+        return QCoreApplication::translate("Mode", "Output 2D left");
+        break;
+    case Output_Right:
+        return QCoreApplication::translate("Mode", "Output 2D right");
+        break;
+    case Output_OpenGL_Stereo:
+        return QCoreApplication::translate("Mode", "Output 3D OpenGL Stereo");
+        break;
+    case Output_Alternating:
+        return QCoreApplication::translate("Mode", "Output 3D alternating");
+        break;
+    case Output_HDMI_Frame_Pack:
+        return QCoreApplication::translate("Mode", "Output HDMI frame pack");
+        break;
+    case Output_Left_Right:
+        return QCoreApplication::translate("Mode", "Output left/right");
+        break;
+    case Output_Left_Right_Half:
+        return QCoreApplication::translate("Mode", "Output left/right half width");
+        break;
+    case Output_Right_Left:
+        return QCoreApplication::translate("Mode", "Output right/left");
+        break;
+    case Output_Right_Left_Half:
+        return QCoreApplication::translate("Mode", "Output right/left half width");
+        break;
+    case Output_Top_Bottom:
+        return QCoreApplication::translate("Mode", "Output top/bottom");
+        break;
+    case Output_Top_Bottom_Half:
+        return QCoreApplication::translate("Mode", "Output top/bottom half height");
+        break;
+    case Output_Bottom_Top:
+        return QCoreApplication::translate("Mode", "Output bottom/top");
+        break;
+    case Output_Bottom_Top_Half:
+        return QCoreApplication::translate("Mode", "Output bottom/top half height");
+        break;
+    case Output_Even_Odd_Rows:
+        return QCoreApplication::translate("Mode", "Output even/odd rows");
+        break;
+    case Output_Even_Odd_Columns:
+        return QCoreApplication::translate("Mode", "Output even/odd columns");
+        break;
+    case Output_Checkerboard:
+        return QCoreApplication::translate("Mode", "Output checkerboard");
+        break;
+    case Output_Red_Cyan_Dubois:
+        return QCoreApplication::translate("Mode", "Output red/cyan high quality");
+        break;
+    case Output_Red_Cyan_FullColor:
+        return QCoreApplication::translate("Mode", "Output red/cyan full color");
+        break;
+    case Output_Red_Cyan_HalfColor:
+        return QCoreApplication::translate("Mode", "Output red/cyan half color");
+        break;
+    case Output_Red_Cyan_Monochrome:
+        return QCoreApplication::translate("Mode", "Output red/cyan monochrome");
+        break;
+    case Output_Green_Magenta_Dubois:
+        return QCoreApplication::translate("Mode", "Output green/magenta high quality");
+        break;
+    case Output_Green_Magenta_FullColor:
+        return QCoreApplication::translate("Mode", "Output green/magenta full color");
+        break;
+    case Output_Green_Magenta_HalfColor:
+        return QCoreApplication::translate("Mode", "Output green/magenta half color");
+        break;
+    case Output_Green_Magenta_Monochrome:
+        return QCoreApplication::translate("Mode", "Output green/magenta monochrome");
+        break;
+    case Output_Amber_Blue_Dubois:
+        return QCoreApplication::translate("Mode", "Output amber/blue high quality");
+        break;
+    case Output_Amber_Blue_FullColor:
+        return QCoreApplication::translate("Mode", "Output amber/blue full color");
+        break;
+    case Output_Amber_Blue_HalfColor:
+        return QCoreApplication::translate("Mode", "Output amber/blue half color");
+        break;
+    case Output_Amber_Blue_Monochrome:
+        return QCoreApplication::translate("Mode", "Output amber/blue monochrome");
+        break;
+    case Output_Red_Green_Monochrome:
+        return QCoreApplication::translate("Mode", "Output red/green monochrome");
+        break;
+    case Output_Red_Blue_Monochrome:
+        return QCoreApplication::translate("Mode", "Output red/blue monochrome");
+        break;
+    }
+    return nullptr;
+}
+
+OutputMode outputModeFromString(const QString& s, bool* ok)
+{
+    OutputMode mode = Output_Left;
+    bool r = true;
+    if (s == "left")
+        mode = Output_Left;
+    else if (s == "right")
+        mode = Output_Right;
+    else if (s == "stereo")
+        mode = Output_OpenGL_Stereo;
+    else if (s == "alternating")
+        mode = Output_Alternating;
+    else if (s == "hdmi-frame-pack")
+        mode = Output_HDMI_Frame_Pack;
+    else if (s == "left-right")
+        mode = Output_Left_Right;
+    else if (s == "left-right-half")
+        mode = Output_Left_Right_Half;
+    else if (s == "right-left")
+        mode = Output_Right_Left;
+    else if (s == "right-left-half")
+        mode = Output_Right_Left_Half;
+    else if (s == "top-bottom")
+        mode = Output_Top_Bottom;
+    else if (s == "top-bottom-half")
+        mode = Output_Top_Bottom_Half;
+    else if (s == "bottom-top")
+        mode = Output_Bottom_Top;
+    else if (s == "bottom-top-half")
+        mode = Output_Bottom_Top_Half;
+    else if (s == "even-odd-rows")
+        mode = Output_Even_Odd_Rows;
+    else if (s == "even-odd-columns")
+        mode = Output_Even_Odd_Columns;
+    else if (s == "checkerboard" || s == "checkeroard")
+        mode = Output_Checkerboard;
+    else if (s == "red-cyan-dubois")
+        mode = Output_Red_Cyan_Dubois;
+    else if (s == "red-cyan-fullcolor" || s == "red-cyan-full-color")
+        mode = Output_Red_Cyan_FullColor;
+    else if (s == "red-cyan-halfcolor" || s == "red-cyan-half-color")
+        mode = Output_Red_Cyan_HalfColor;
+    else if (s == "red-cyan-monochrome")
+        mode = Output_Red_Cyan_Monochrome;
+    else if (s == "green-magenta-dubois")
+        mode = Output_Green_Magenta_Dubois;
+    else if (s == "green-magenta-fullcolor" || s == "green-magenta-full-color")
+        mode = Output_Green_Magenta_FullColor;
+    else if (s == "green-magenta-halfcolor" || s == "green-magenta-half-color")
+        mode = Output_Green_Magenta_HalfColor;
+    else if (s == "green-magenta-monochrome")
+        mode = Output_Green_Magenta_Monochrome;
+    else if (s == "amber-blue-dubois")
+        mode = Output_Amber_Blue_Dubois;
+    else if (s == "amber-blue-fullcolor" || s == "amber-blue-full-color")
+        mode = Output_Amber_Blue_FullColor;
+    else if (s == "amber-blue-halfcolor" || s == "amber-blue-half-color")
+        mode = Output_Amber_Blue_HalfColor;
+    else if (s == "amber-blue-monochrome")
+        mode = Output_Amber_Blue_Monochrome;
+    else if (s == "red-green-monochrome")
+        mode = Output_Red_Green_Monochrome;
+    else if (s == "red-blue-monochrome")
+        mode = Output_Red_Blue_Monochrome;
+    else
+        r = false;
+    if (ok)
+        *ok = r;
+    return mode;
+}
+
+#endif
 
 const char* loopModeToString(LoopMode mode)
 {

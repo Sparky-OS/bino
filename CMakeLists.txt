@@ -17,7 +17,7 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 # Required: Qt6
 find_package(Qt6 6.7.0 REQUIRED COMPONENTS OpenGLWidgets Multimedia LinguistTools)
-include(cmake/NativeVideo.cmake)
+include(cmake/StereoDesktop.cmake)
 # Optional: Sparky Stereo OS's stereo layer, the rule that the players of the edition share to tell what a 3D video is
 find_package(StereoLayer 1.5 CONFIG QUIET)
 if(StereoLayer_FOUND)
@@ -62,13 +62,15 @@ qt6_add_resources(bino "misc" PREFIX "/" FILES
 	src/shader-view.vert.glsl
 	src/shader-view.frag.glsl
 	src/shader-display.vert.glsl
-	src/shader-display.frag.glsl
+	${BINO_DISPLAY_SHADER}
 	src/shader-vrdevice.vert.glsl
 	src/shader-vrdevice.frag.glsl
 	res/bino-logo-small.svg
 	res/bino-logo-small-512.png
 	res/bino-fallback-frame.png)
-bino_native_video(bino ${CMAKE_CURRENT_SOURCE_DIR})
+if(BINO_STEREO_DESKTOP)
+    bino_native_video(bino ${CMAKE_CURRENT_SOURCE_DIR})
+endif()
 set_target_properties(bino PROPERTIES WIN32_EXECUTABLE TRUE)
 target_link_libraries(bino PRIVATE Qt6::OpenGLWidgets Qt6::Multimedia ${QVR_LIBRARIES})
 if(StereoLayer_FOUND)
@@ -80,16 +82,16 @@ install(TARGETS bino RUNTIME DESTINATION bin)
 find_program(PANDOC NAMES pandoc DOC "pandoc executable")
 if(PANDOC)
     add_custom_command(OUTPUT "${CMAKE_BINARY_DIR}/bino-manual.html"
-	COMMAND ${PANDOC} "-s" "-t" "html" "--toc" "--css" "bino-manual.css" "${CMAKE_SOURCE_DIR}/doc/bino-manual.md" "-o" "${CMAKE_BINARY_DIR}/bino-manual.html"
+	COMMAND ${PANDOC} "-s" "-t" "html" "--toc" "--css" "bino-manual.css" "${BINO_MANUAL}" "-o" "${CMAKE_BINARY_DIR}/bino-manual.html"
 	WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
-	DEPENDS "${CMAKE_SOURCE_DIR}/doc/bino-manual.md"
+	DEPENDS "${BINO_MANUAL}"
 	COMMENT "Generating HTML manual with pandoc" VERBATIM)
     add_custom_target(manual ALL DEPENDS "${CMAKE_BINARY_DIR}/bino-manual.html")
     install(FILES "doc/bino-manual.css" "${CMAKE_BINARY_DIR}/bino-manual.html" DESTINATION share/doc/bino)
     add_custom_command(OUTPUT "${CMAKE_BINARY_DIR}/bino.1"
-	COMMAND ${PANDOC} "-s" "-t" "man" "${CMAKE_SOURCE_DIR}/doc/bino-manual.md" "-o" "${CMAKE_BINARY_DIR}/bino.1"
+	COMMAND ${PANDOC} "-s" "-t" "man" "${BINO_MANUAL}" "-o" "${CMAKE_BINARY_DIR}/bino.1"
 	WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
-	DEPENDS "${CMAKE_SOURCE_DIR}/doc/bino-manual.md"
+	DEPENDS "${BINO_MANUAL}"
 	COMMENT "Generating man page with pandoc" VERBATIM)
     add_custom_target(manpage ALL DEPENDS "${CMAKE_BINARY_DIR}/bino.1")
     install(FILES "${CMAKE_BINARY_DIR}/bino.1" DESTINATION share/man/man1)

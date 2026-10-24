@@ -175,3 +175,43 @@ The native layer prefers 10-bit RGB configurations, then uses an 8-bit window co
 The ordinary overlay keeps eight alpha bits independently of that choice.
 Desktop OpenGL is requested explicitly; leaving the renderable type unspecified can select an incompatible EGL API on NVIDIA Wayland.
 The actual video and overlay precision is recorded in the trace, so a software or NVIDIA result cannot be presented as proof of a different GPU's precision.
+
+### Edition build gate and upstream output controls
+
+Configure both the application and these probes with
+`-DBINO_STEREO_DESKTOP=ON` or `-DBINO_STEREO_DESKTOP=OFF`.
+ON is the edition default; the OFF application does not require libstereo-declare
+or the native-surface development dependencies.
+The manual and display shader resource follow the same option.
+
+`output-modes-probe CLIP DIRECTORY MODE_NUMBER` uses the real `Gui` and its actions.
+For OFF it verifies all 30 original output actions, triggers the chosen action,
+checks its mode-string round trip, pauses the source, and captures the real widget
+framebuffer twice (both target buffers for mode 2, consecutive frames for mode 3).
+For ON it verifies that no output action is exposed.
+Run each mode in a fresh isolated compositor session with a source containing
+320x180 left RGB(49,97,151) and right RGB(211,173,67) eyes, lossless FFV1/bgr0 at
+24 fps for three seconds.
+Keep the source at `ROOT/source.mkv` and results at `ROOT/off-0` through
+`ROOT/off-29`, with the process exit status in each `app-exit.txt`.
+`output-modes.py ROOT` decodes and checks the fixture, then compares interior
+pixels of each output to independently calculated packing, parity, luminance and
+anaglyph expectations (maximum one 8-bit code value error).
+The alternating case must contain both source eyes, and OpenGL stereo must have
+the expected eye in each target buffer.
+`output-modes.py ROOT --swap-expected` is a negative control and must fail.
+
+For ON, also rerun `widget-probe` with the address-coded sources and the native
+size/source gates above. The output-menu test alone does not prove native eye
+geometry or the stereo declaration.
+
+The restored checkerboard mode also has a retained parser regression: its old
+`checkeroard` saved spelling did not round-trip. The corrected canonical spelling
+is `checkerboard`; the old saved spelling remains accepted. The documented
+`full-color` and `half-color` command-line names are accepted alongside the
+original `fullcolor` and `halfcolor` names.
+The interleaved-mode pixel checks exposed undefined implicit texture derivatives
+in the original divergent eye-selection branches. Those three modes now use
+explicit gradients calculated before the branch; their conversion and parity
+rules are unchanged. Use `--modes 13 14 15` to repeat just that regression on a
+second driver. The one-code-value tolerance is unchanged.

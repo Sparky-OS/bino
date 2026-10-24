@@ -46,6 +46,9 @@ Widget::Widget(OutputMode outputMode, float surroundVerticalFOV, QWidget* parent
     _sizeHint(0.5f * SizeBase),
     _lastFrameRelWidth(1.0f), _lastFrameRelHeight(1.0f),
     _outputMode(outputMode),
+#if !BINO_STEREO_DESKTOP
+    _alternatingLastView(1),
+#endif
     _inOverlayUIEvent(false),
     _inSurroundMovement(false),
     _surroundHorizontalAngleBase(0.0f),
@@ -53,6 +56,7 @@ Widget::Widget(OutputMode outputMode, float surroundVerticalFOV, QWidget* parent
     _surroundHorizontalAngleCurrent(0.0f),
     _surroundVerticalAngleCurrent(0.0f)
 {
+#if BINO_STEREO_DESKTOP
     if (outputMode == Output_OpenGL_Stereo && NativeVideoLayer::supported()) {
         _nativeLayer = std::make_unique<NativeVideoLayer>(this);
         QSurfaceFormat format = QSurfaceFormat::defaultFormat();
@@ -65,6 +69,7 @@ Widget::Widget(OutputMode outputMode, float surroundVerticalFOV, QWidget* parent
         setProperty("binoNativeVideo", true);
         NativeVideoLayer::prepareWindow(window());
     }
+#endif
     setSurroundVerticalFieldOfView(surroundVerticalFOV);
     _surroundVerticalFOVDefault = _surroundVerticalFOV; // to make sure clamping was applied
     setUpdateBehavior(QOpenGLWidget::PartialUpdate);
@@ -87,18 +92,28 @@ Widget::Widget(OutputMode outputMode, float surroundVerticalFOV, QWidget* parent
 
 Widget::~Widget()
 {
+#if BINO_STEREO_DESKTOP
     _nativeLayer.reset();
+#endif
 }
 
 bool Widget::isOpenGLStereo() const
 {
-    return bool(_nativeLayer) || (context() ? context()->format().stereo() : false);
+    return usesNativeVideo() || (context() ? context()->format().stereo() : false);
 }
 
 OutputMode Widget::outputMode() const
 {
     return _outputMode;
 }
+
+#if !BINO_STEREO_DESKTOP
+void Widget::setOutputMode(enum OutputMode mode)
+{
+    _outputMode = mode;
+}
+
+#endif
 
 void Widget::setSurroundVerticalFieldOfView(float vfov)
 {
@@ -129,9 +144,18 @@ void Widget::initializeGL()
         std::exit(1);
     }
 #endif
+#if BINO_STEREO_DESKTOP
     if (outputMode() == Output_OpenGL_Stereo && !isOpenGLStereo())
         _outputMode = Output_Left;
 
+#else
+    if (outputMode() == Output_OpenGL_Stereo && !isOpenGLStereo()) {
+        LOG_FATAL("%s", qPrintable(tr("OpenGL stereo mode is not available on this system.")));
+        QMessageBox::critical(this, tr("Error"), tr("OpenGL stereo mode is not available on this system."));
+        std::exit(1);
+    }
+
+#endif
     bool haveAnisotropicFiltering = checkTextureAnisotropicFilterAvailability();
     initializeOpenGLFunctions();
     bool isCoreProfile = (QOpenGLContext::currentContext()->format().profile() == QSurfaceFormat::CoreProfile);
@@ -222,12 +246,30 @@ void Widget::initializeGL()
     Bino::instance()->initProcess();
 }
 
+#if BINO_STEREO_DESKTOP
 void Widget::rebuildDisplayPrgIfNecessary()
+#else
+void Widget::rebuildDisplayPrgIfNecessary(OutputMode outputMode)
+#endif
 {
+#if BINO_STEREO_DESKTOP
     if (_displayPrg.isLinked())
         return;
+#else
+    if (outputMode == Output_Right)
+        outputMode = Output_Left; // these are handled specially; see shader
+    if (_displayPrg.isLinked() && _displayPrgOutputMode == outputMode)
+        return;
+
+    LOG_DEBUG("rebuilding display program for output mode %s", outputModeToString(outputMode));
+#endif
     QString vertexShaderSource = readFile(":src/shader-display.vert.glsl");
+#if BINO_STEREO_DESKTOP
+    QString fragmentShaderSource = readFile(":src/shader-display-native.frag.glsl");
+#else
     QString fragmentShaderSource = readFile(":src/shader-display.frag.glsl");
+    fragmentShaderSource.replace("$OUTPUT_MODE", QString::number(int(outputMode)));
+#endif
     if (OpenGLType != OpenGL_Type_Desktop) {
         vertexShaderSource.prepend("#version 300 es\n");
         fragmentShaderSource.prepend("#version 300 es\n"
@@ -240,6 +282,9 @@ void Widget::rebuildDisplayPrgIfNecessary()
     _displayPrg.addShaderFromSourceCode(QOpenGLShader::Vertex, vertexShaderSource);
     _displayPrg.addShaderFromSourceCode(QOpenGLShader::Fragment, fragmentShaderSource);
     _displayPrg.link();
+#if !BINO_STEREO_DESKTOP
+    _displayPrgOutputMode = outputMode;
+#endif
 }
 
 void Widget::paintGL()
@@ -254,10 +299,11 @@ void Widget::paintGL()
     float frameDisplayAspectRatio;
     bool surround;
     Bino::instance()->updateMainProcess();
-    Bino::instance()->preRenderProcess(width, height, &viewCount, &viewWidth, &viewHeight, &frameDisplayAspectRatio, &surround, bool(_nativeLayer));
+    Bino::instance()->preRenderProcess(width, height, &viewCount, &viewWidth, &viewHeight, &frameDisplayAspectRatio, &surround, usesNativeVideo());
 
     FrameTrace::event("geometry", FrameTrace::timestamp(), 0, FrameTrace::pts, viewWidth, viewHeight);
 
+#if BINO_STEREO_DESKTOP
     const bool frameIsStereo = viewCount == 2;
     const int selectedView = frameIsStereo && _outputMode == Output_OpenGL_Stereo
             && currentTargetBuffer() == QOpenGLWidget::RightBuffer ? 1 : 0;
@@ -267,6 +313,65 @@ void Widget::paintGL()
     for (int v = 0; v < viewCount; v++) {
         if (!_nativeLayer && v != selectedView)
             continue;
+#else
+    // Adjust the stereo mode if necessary
+    bool frameIsStereo = (viewCount == 2);
+    OutputMode outputMode = _outputMode;
+    if (!frameIsStereo)
+        outputMode = Output_Left;
+    if (outputMode == Output_Left_Right || outputMode == Output_Right_Left)
+        frameDisplayAspectRatio *= 2.0f;
+    else if (outputMode == Output_Top_Bottom || outputMode == Output_Bottom_Top || outputMode == Output_HDMI_Frame_Pack)
+        frameDisplayAspectRatio *= 0.5f;
+    LOG_FIREHOSE("%s: %d views, %dx%d, %g, surround %s", Q_FUNC_INFO, viewCount, viewWidth, viewHeight, frameDisplayAspectRatio, surround ? "on" : "off");
+
+    // Fill the view texture(s) as needed
+    for (int v = 0; v <= 1; v++) {
+        bool needThisView = true;
+        switch (outputMode) {
+        case Output_Left:
+            needThisView = (v == 0);
+            break;
+        case Output_Right:
+            needThisView = (v == 1);
+            break;
+        case Output_Alternating:
+            needThisView = (v != _alternatingLastView);
+            break;
+        case Output_OpenGL_Stereo:
+            needThisView = (v == (currentTargetBuffer() == QOpenGLWidget::LeftBuffer ? 0 : 1));
+            break;
+        case Output_HDMI_Frame_Pack:
+        case Output_Left_Right:
+        case Output_Left_Right_Half:
+        case Output_Right_Left:
+        case Output_Right_Left_Half:
+        case Output_Top_Bottom:
+        case Output_Top_Bottom_Half:
+        case Output_Bottom_Top:
+        case Output_Bottom_Top_Half:
+        case Output_Even_Odd_Rows:
+        case Output_Even_Odd_Columns:
+        case Output_Checkerboard:
+        case Output_Red_Cyan_Dubois:
+        case Output_Red_Cyan_FullColor:
+        case Output_Red_Cyan_HalfColor:
+        case Output_Red_Cyan_Monochrome:
+        case Output_Green_Magenta_Dubois:
+        case Output_Green_Magenta_FullColor:
+        case Output_Green_Magenta_HalfColor:
+        case Output_Green_Magenta_Monochrome:
+        case Output_Amber_Blue_Dubois:
+        case Output_Amber_Blue_FullColor:
+        case Output_Amber_Blue_HalfColor:
+        case Output_Amber_Blue_Monochrome:
+        case Output_Red_Green_Monochrome:
+        case Output_Red_Blue_Monochrome:
+            break;
+        }
+        if (!needThisView)
+            continue;
+#endif
         // prepare view texture
         glBindTexture(GL_TEXTURE_2D, _viewTex[v]);
         if (_viewTexWidth[v] != viewWidth || _viewTexHeight[v] != viewHeight) {
@@ -316,6 +421,7 @@ void Widget::paintGL()
         }
     }
 
+#if BINO_STEREO_DESKTOP
     if (_nativeLayer) {
         const QSize eyeSize(viewWidth, viewHeight);
         double placedWidth = this->width();
@@ -377,36 +483,97 @@ void Widget::paintGL()
         return;
     }
 
+#endif
+
     // Put the views on screen in the current mode
     glViewport(0, 0, width, height);
     glDisable(GL_DEPTH_TEST);
     float relWidth = 1.0f;
     float relHeight = 1.0f;
     float screenAspectRatio = width / float(height);
+#if !BINO_STEREO_DESKTOP
+    if (outputMode == Output_HDMI_Frame_Pack)
+        screenAspectRatio = width / (height - height / 49.0f);
+#endif
     if (screenAspectRatio < frameDisplayAspectRatio)
         relHeight = screenAspectRatio / frameDisplayAspectRatio;
     else
         relWidth = frameDisplayAspectRatio / screenAspectRatio;
     _lastFrameRelWidth = relWidth;
     _lastFrameRelHeight = relHeight;
+#if BINO_STEREO_DESKTOP
     rebuildDisplayPrgIfNecessary();
+#else
+    rebuildDisplayPrgIfNecessary((outputMode == Output_OpenGL_Stereo || outputMode == Output_Alternating)
+            ? Output_Left /* also covers Output_Right */ : outputMode);
+#endif
     glUseProgram(_displayPrg.programId());
+#if BINO_STEREO_DESKTOP
     _displayPrg.setUniformValue("nativeOffsetX", 0);
+#else
+#endif
     _displayPrg.setUniformValue("view0", 0);
     _displayPrg.setUniformValue("view1", 1);
     _displayPrg.setUniformValue("relativeWidth", relWidth);
     _displayPrg.setUniformValue("relativeHeight", relHeight);
     _displayPrg.setUniformValue("nativeSamples", width == viewWidth && height == viewHeight
             && relWidth == 1.0f && relHeight == 1.0f);
+#if !BINO_STEREO_DESKTOP
+    QPoint globalLowerLeft = mapToGlobal(QPoint(0, height - 1));
+    _displayPrg.setUniformValue("fragOffsetX", float(globalLowerLeft.x()));
+    _displayPrg.setUniformValue("fragOffsetY", float(screen()->geometry().height() - 1 - globalLowerLeft.y()));
+    LOG_FIREHOSE("lower left widget corner in screen coordinates: x=%d y=%d", globalLowerLeft.x(), screen()->geometry().height() - 1 - globalLowerLeft.y());
+#endif
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _viewTex[0]);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, _viewTex[1]);
     glBindVertexArray(_quadVao);
+#if BINO_STEREO_DESKTOP
     _displayPrg.setUniformValue("outputModeLeftRightView", selectedView);
     glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject(currentTargetBuffer()));
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, nullptr);
+#else
+    if (isOpenGLStereo()) {
+        LOG_FIREHOSE("widget draw mode: opengl stereo");
+        if (outputMode == Output_OpenGL_Stereo) {
+            if (currentTargetBuffer() == QOpenGLWidget::LeftBuffer) {
+                glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject(QOpenGLWidget::LeftBuffer));
+                _displayPrg.setUniformValue("outputModeLeftRightView", 0);
+            } else {
+                glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject(QOpenGLWidget::RightBuffer));
+                _displayPrg.setUniformValue("outputModeLeftRightView", 1);
+            }
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+        } else {
+            if (outputMode == Output_Alternating)
+                outputMode = (_alternatingLastView == 0 ? Output_Right : Output_Left);
+            _displayPrg.setUniformValue("outputModeLeftRightView", outputMode == Output_Left ? 0 : 1);
+            if (currentTargetBuffer() == QOpenGLWidget::LeftBuffer) {
+                glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject(QOpenGLWidget::LeftBuffer));
+            } else {
+                glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject(QOpenGLWidget::RightBuffer));
+            }
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+        }
+    } else {
+        LOG_FIREHOSE("widget draw mode: normal");
+        glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject());
+        if (outputMode == Output_Alternating)
+            outputMode = (_alternatingLastView == 0 ? Output_Right : Output_Left);
+        _displayPrg.setUniformValue("outputModeLeftRightView", outputMode == Output_Left ? 0 : 1);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+    }
+#endif
 
+#if !BINO_STEREO_DESKTOP
+    // Update Output_Alternating
+    if (_outputMode == Output_Alternating && frameIsStereo) {
+        _alternatingLastView = (_alternatingLastView == 0 ? 1 : 0);
+        update();
+    }
+
+#endif
     // Redraw at least 25 times per second, for overlay UI updates
     _updateTimer.start(40);
 }
@@ -433,6 +600,58 @@ QPointF Widget::toView(const QPointF& pos) const
 {
     float tx = (pos.x() / _width  - 0.5f * (1.0f - _lastFrameRelWidth )) / _lastFrameRelWidth ;
     float ty = (pos.y() / _height - 0.5f * (1.0f - _lastFrameRelHeight)) / _lastFrameRelHeight;
+#if !BINO_STEREO_DESKTOP
+    switch (_outputMode) {
+    case Output_Left:
+    case Output_Right:
+    case Output_OpenGL_Stereo:
+    case Output_Alternating:
+    case Output_Even_Odd_Rows:
+    case Output_Even_Odd_Columns:
+    case Output_Checkerboard:
+    case Output_Red_Cyan_Dubois:
+    case Output_Red_Cyan_FullColor:
+    case Output_Red_Cyan_HalfColor:
+    case Output_Red_Cyan_Monochrome:
+    case Output_Green_Magenta_Dubois:
+    case Output_Green_Magenta_FullColor:
+    case Output_Green_Magenta_HalfColor:
+    case Output_Green_Magenta_Monochrome:
+    case Output_Amber_Blue_Dubois:
+    case Output_Amber_Blue_FullColor:
+    case Output_Amber_Blue_HalfColor:
+    case Output_Amber_Blue_Monochrome:
+    case Output_Red_Green_Monochrome:
+    case Output_Red_Blue_Monochrome:
+        // nothing to do
+        break;
+    case Output_HDMI_Frame_Pack:
+        if (ty >= 0.5f) {
+            ty -= 0.5f;
+            ty -= (0.25f / 49.0f);
+        } else {
+            ty += (0.25f / 49.0f);
+        }
+        ty *= 2.0f;
+        break;
+    case Output_Left_Right:
+    case Output_Left_Right_Half:
+    case Output_Right_Left:
+    case Output_Right_Left_Half:
+        if (tx >= 0.5f)
+            tx -= 0.5f;
+        tx *= 2.0f;
+        break;
+    case Output_Top_Bottom:
+    case Output_Top_Bottom_Half:
+    case Output_Bottom_Top:
+    case Output_Bottom_Top_Half:
+        if (ty >= 0.5f)
+            ty -= 0.5f;
+        ty *= 2.0f;
+        break;
+    }
+#endif
     if (Bino::instance()->assumeSurroundMode() != Surround_Off) {
         QPointF tl = toPixelCoord(_surroundProjectionMatrix, Bino::surroundCubeScale * QVector3D(+1.0f, +1.0f, +1.0f), _width, _height);
         QPointF br = toPixelCoord(_surroundProjectionMatrix, Bino::surroundCubeScale * QVector3D(-1.0f, -1.0f, +1.0f), _width, _height);

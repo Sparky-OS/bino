@@ -198,12 +198,16 @@ int main(int argc, char** argv)
                 "media-seek-backward", "media-seek-forward" })
             if (QIcon::fromTheme(name).isNull()) qFatal("missing playback control icon");
     }
+#if BINO_STEREO_DESKTOP
     if (stereo && NativeVideoLayer::supported()) {
         format.setStereo(false);
         format.setAlphaBufferSize(8);
     } else {
         format.setStereo(stereo);
     }
+#else
+    format.setStereo(stereo);
+#endif
     QSurfaceFormat::setDefaultFormat(format);
     SetLogLevel(Log_Level_Debug);
     initializeOpenGLType(format);

@@ -60,6 +60,12 @@ Bino is a video player with a focus on 3D and Virtual Reality:
   Get control commands by listening on a TCP port.
   See [Scripting and Remote Control](#scripting-and-remote-control).
 
+- `--stereo`
+
+  Enable OpenGL quad-buffered stereo support. This typically only works
+  with legacy proprietary GPU drivers, and autodetection breaks with these
+  drivers, so this feature has to be enabled manually.
+
 - `--opengles`
 
   Use OpenGL ES instead of Desktop OpenGL.
@@ -161,6 +167,17 @@ Bino is a video player with a focus on 3D and Virtual Reality:
   bottom-top-half, left-right, left-right-half, right-left, right-left-half,
   alternating-left-right, alternating-right-left).
 
+- `-o`, `--output` *mode*
+
+  Set output mode (left, right, stereo, alternating, hdmi-frame-pack,
+  left-right, left-right-half, right-left, right-left-half, top-bottom,
+  top-bottom-half, bottom-top, bottom-top-half, even-odd-rows,
+  even-odd-columns, checkerboard, red-cyan-dubois, red-cyan-full-color,
+  red-cyan-half-color, red-cyan-monochrome, green-magenta-dubois,
+  green-magenta-full-color, green-magenta-half-color, green-magenta-monochrome,
+  amber-blue-dubois, amber-blue-full-color, amber-blue-half-color,
+  amber-blue-monochrome, red-green-monochrome, red-blue-monochrome).
+
 - `-s`, `--surround` *mode*
 
   Set surround mode (360, 180, off).
@@ -177,12 +194,45 @@ Bino is a video player with a focus on 3D and Virtual Reality:
 
   Start in fullscreen mode.
 
-# Display output
+# Output Modes
 
-Bino sends the left and right eyes to Stereo KWin at their stored resolution.
-Stereo KWin scales them once and selects the format for each output in Display Configuration.
-Subtitles and controls use separate ordinary 2D layers at display resolution.
-The legacy `-o` option is accepted for existing launchers and has no effect.
+## Single-Screen Output
+
+Most output modes should be self explanatory, but there are some exceptions:
+
+- `stereo` requires OpenGL quad-buffered stereo support, typically limited to
+  high-end graphics cards. You must use the `--stereo` option on the command
+  line to enable this mode.
+- `alternating` tries to mimic stereo mode by displaying the left and right
+  frames alternating, ideally at display speed. This is unreliable since Bino
+  has no way of making sure that its output frames actually correspond to
+  display output frames, but it might work, depending on your hardware and
+  system setup.
+- `hdmi-frame-pack` is a special mode supported by some 3D TVs via HDMI 1.4a,
+  where the left view is placed in the top part of a frame and the right view
+  in the bottom part, and both parts are separated by a blank area that takes
+  1/49 of the vertical space. To use this mode, force your display output
+  resolution into either 1280x1470 (720p 3D: 720+30+720=1470; 1470/49=30) or
+  1920x2205 (1080p 3D: 1080+45+1080=2205; 2205/49=45).
+- `even-odd-rows`, `even-odd-columns` and `checkerboard` are for (older) 3D
+  TVs.
+
+## Multi-Screen Output
+
+Common stereoscopic display setups have one display for the left view and one
+display for the right view.
+
+The easiest way to use such setups is to configure your desktop environment to
+allow Bino to use two screens in fullscreen mode, and then pick output mode
+left/right or top/bottom.
+
+For example, on KDE Plasma, look for "KWin Scripts" in the System Settings,
+enable the "Video Wall" script, and configure it so that it applies to
+"org.bino3d.bino".
+
+An alternative is to use [Virtual Reality mode](#virtual-reality), which can
+support much more complex multi-screen setups without the need for any VR
+hardware (you can still use keyboard and mouse).
 
 # File Name Conventions
 
@@ -376,6 +426,10 @@ with `#`) are ignored. The following commands are supported:
 - `adjust-volume` *offset*
 
   Adjust the volume by the given amount (the final volume is clamped between 0 and 1).
+
+- `set-output-mode` *mode*
+
+  Set the given output mode. See the command line option `--output` for a list of modes.
 
 - `set-surround-vfov` *degrees*
 

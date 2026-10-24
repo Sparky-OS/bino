@@ -6,9 +6,13 @@
 ## Sparky Stereo OS
 
 This is the stereo version of Bino by Sparky Stereo OS, forked from [marlam/bino](https://github.com/marlam/bino).
-It is the distribution's Bino: it decodes every 3D input layout Bino knows, and its output is always OpenGL stereo, which the desktop receives as one full side-by-side picture; Stereo KWin then gives each screen what it needs (a 3D TV's HDMI 1.4a mode, anaglyph, or the left eye on a plain screen), so the output modes are not in its menu.
+It is the distribution's Bino: it decodes every 3D input layout Bino knows, and hands each eye at its source resolution to the desktop as one declared full side-by-side picture; Stereo KWin then gives each screen what it needs (a 3D TV's HDMI 1.4a mode, anaglyph, or the left eye on a plain screen), so the output modes are not in its menu.
 It also plays right-first stereo videos with the eyes in the right place: the "inverted" flag of the Stereo 3D side data, which ffprobe prints as a number, was never read, so Matroska StereoMode 11 and 2 (RFC 9559, right eye first) showed the eyes swapped.
+The edition builds with `-DBINO_STEREO_DESKTOP=ON` (the default in this fork).
+This keeps video in its own native surface and subtitles and controls in the ordinary 2D window.
 Its settings live in their own folder, Bino3D-stereo, beside those of a stock Bino.
+Build with `-DBINO_STEREO_DESKTOP=OFF` to retain upstream's output modes, menu actions, command-line options, conversions, shaders, manual and Bino3D settings.
+That build does not require the native Wayland/X11 surface dependencies.
 
 Where it comes from:
 

@@ -45,6 +45,9 @@ private:
     QActionGroup* _trackSubtitleActionGroup;
     QActionGroup* _3dSurroundActionGroup;
     QActionGroup* _3dInputActionGroup;
+#if !BINO_STEREO_DESKTOP
+    QActionGroup* _3dOutputActionGroup;
+#endif
     QAction* _mediaTogglePauseAction;
     QAction* _mediaToggleVolumeMuteAction;
     QAction* _mediaVolumeIncAction;
@@ -81,6 +84,9 @@ public slots:
     void playlistWait();
     void threeDSurround();
     void threeDInput();
+#if !BINO_STEREO_DESKTOP
+    void threeDOutput();
+#endif
     void mediaTogglePause();
     void mediaToggleVolumeMute();
     void mediaVolumeInc();
@@ -114,6 +120,9 @@ public:
 
     static Gui* instance();
 
+#if !BINO_STEREO_DESKTOP
+    void setOutputMode(OutputMode mode);
+#endif
     void setSurroundVerticalFieldOfView(float vfov);
     void setFullscreen(bool f);
 };

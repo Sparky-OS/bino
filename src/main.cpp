@@ -108,7 +108,12 @@ int main(int argc, char* argv[])
     if (binoTranslator.load(QLocale(), "bino", "_", ":/i18n")) {
         app.installTranslator(&binoTranslator);
     }
+#if BINO_STEREO_DESKTOP
     QCoreApplication::setOrganizationName("Bino3D-stereo");
+#else
+    QCoreApplication::setOrganizationName("Bino3D");
+#endif
+
     QCoreApplication::setOrganizationDomain("bino3d.org");
     QCoreApplication::setApplicationName("Bino");
     QSettings settings;
@@ -133,9 +138,14 @@ int main(int argc, char* argv[])
             QCommandLineParser::tr("Get control commands from a Unix Domain Socket."), "name" });
     parser.addOption({ "control-tcp",
             QCommandLineParser::tr("Get control commands by listening on a TCP port."), "[ip|name]:port" });
+#if BINO_STEREO_DESKTOP
     QCommandLineOption legacyStereo("stereo");
     legacyStereo.setFlags(QCommandLineOption::HiddenFromHelp);
     parser.addOption(legacyStereo);
+#else
+    parser.addOption({ "stereo",
+            QCommandLineParser::tr("Enable OpenGL quad-buffered stereo support.") });
+#endif
     parser.addOption({ "opengles",
             QCommandLineParser::tr("Use OpenGL ES instead of Desktop OpenGL.") });
     parser.addOption({ "vr",
@@ -206,10 +216,24 @@ int main(int argc, char* argv[])
             "left-right, left-right-half, right-left, right-left-half, "
             "alternating-left-right, alternating-right-left"),
             "mode" });
+#if BINO_STEREO_DESKTOP
     // Accepted for existing launchers; screen formats belong to the compositor.
     QCommandLineOption legacyOutput({ "o", "output" }, QString(), "mode");
     legacyOutput.setFlags(QCommandLineOption::HiddenFromHelp);
     parser.addOption(legacyOutput);
+#else
+    parser.addOption({ { "o", "output" },
+            QCommandLineParser::tr("Set output mode (%1).").arg("left, right, stereo, alternating, "
+            "hdmi-frame-pack, "
+            "left-right, left-right-half, right-left, right-left-half, "
+            "top-bottom, top-bottom-half, bottom-top, bottom-top-half, "
+            "even-odd-rows, even-odd-columns, checkerboard, "
+            "red-cyan-dubois, red-cyan-full-color, red-cyan-half-color, red-cyan-monochrome, "
+            "green-magenta-dubois, green-magenta-full-color, green-magenta-half-color, green-magenta-monochrome, "
+            "amber-blue-dubois, amber-blue-full-color, amber-blue-half-color, amber-blue-monochrome, "
+            "red-green-monochrome, red-blue-monochrome"),
+            "mode" });
+#endif
     parser.addOption({ { "s", "surround" },
             QCommandLineParser::tr("Set surround mode (%1).").arg("360, 180, off"),
             "mode" });
@@ -284,6 +308,22 @@ int main(int argc, char* argv[])
             return 1;
         }
     }
+#if !BINO_STEREO_DESKTOP
+    OutputMode outputMode = Output_Red_Cyan_Dubois;
+    if (parser.isSet("stereo")) {
+        outputMode = Output_OpenGL_Stereo;
+    }
+    if (parser.isSet("output")) {
+        bool ok;
+        outputMode = outputModeFromString(parser.value("output"), &ok);
+        if (!ok) {
+            LOG_FATAL("%s", qPrintable(QCommandLineParser::tr("Invalid argument for option %1").arg("--output")));
+            return 1;
+        }
+    }
+
+#endif
+
     // Lists of available devices. Initialize these lists only when necessary because
     // this can take some time!
     QList<QAudioDevice> audioOutputDevices;
@@ -684,6 +724,7 @@ int main(int argc, char* argv[])
             format.setProfile(QSurfaceFormat::CoreProfile);
             format.setVersion(3, 3);
         }
+#if BINO_STEREO_DESKTOP
         if (guiMode && !NativeVideoLayer::supported()) {
             // Always get quad-buffered stereo: the output is always OpenGL stereo.
             format.setOption(QSurfaceFormat::StereoBuffers);
@@ -694,6 +735,14 @@ int main(int argc, char* argv[])
             format.setBlueBufferSize(8);
             format.setAlphaBufferSize(8);
         }
+#else
+        if (guiMode && parser.isSet("stereo")) {
+            // Try to get quad-buffered stereo.
+            // On modern systems it's ok if this fails.
+            // On legacy proprietary NVIDIA crap, it breaks.
+            format.setOption(QSurfaceFormat::StereoBuffers);
+        }
+#endif
         QSurfaceFormat::setDefaultFormat(format);
     }
 
@@ -749,8 +798,20 @@ int main(int argc, char* argv[])
         return 1;
 #endif
     } else {
+#if BINO_STEREO_DESKTOP
         // Start the GUI
         Gui gui(Output_OpenGL_Stereo, surroundVerticalFOV, parser.isSet("fullscreen"));
+#else
+        // Restore GUI settings unless they were overwritten on the command line
+        if (!parser.isSet("output")) {
+            bool ok = false;
+            OutputMode om = outputModeFromString(qPrintable(settings.value("OutputMode").toString()), &ok);
+            if (ok)
+                outputMode = om;
+        }
+        // Start the GUI
+        Gui gui(outputMode, surroundVerticalFOV, parser.isSet("fullscreen"));
+#endif
         gui.show();
         // wait for several seconds to process all events before starting
         // the playlist, because otherwise playing might be finished before

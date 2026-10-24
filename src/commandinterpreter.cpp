@@ -421,7 +421,19 @@ void CommandInterpreter::processLine()
             }
         }
     } else if (cmd.startsWith("set-output-mode ")) {
+#if BINO_STEREO_DESKTOP
         // Compatibility with old control files: output belongs to the compositor.
+#else
+        bool ok;
+        OutputMode outputMode = outputModeFromString(cmd.mid(16), &ok);
+        if (!ok) {
+            LOG_FATAL("%s", qPrintable(tr("Invalid argument in %1 line %2").arg(_name).arg(_lineNumber)));
+        } else {
+            Gui* gui = Gui::instance();
+            if (gui)
+                gui->setOutputMode(outputMode);
+        }
+#endif
     } else if (cmd.startsWith("set-surround-vfov ")) {
         bool ok;
         float surroundVerticalFOV = cmd.mid(18).toFloat(&ok);
