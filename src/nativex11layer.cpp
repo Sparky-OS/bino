@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "nativex11layer.hpp"
+#if BINO_HAVE_X11_CHILD_PLACE
 #include <QGuiApplication>
 #include <QOpenGLContext>
 #include <QOpenGLExtraFunctions>
@@ -227,3 +228,14 @@ void NativeX11Layer::end()
     glXMakeContextCurrent(d->display, d->savedDraw, d->savedRead, d->savedContext);
     d->current = false;
 }
+
+#else
+struct NativeX11Layer::Private {};
+NativeX11Layer::NativeX11Layer(QWidget*) : d(std::make_unique<Private>()) {}
+NativeX11Layer::~NativeX11Layer() = default;
+bool NativeX11Layer::supported() { return false; }
+bool NativeX11Layer::failed() const { return false; }
+bool NativeX11Layer::begin(const QSize&, int, const QRect&) { return false; }
+void NativeX11Layer::end() {}
+void NativeX11Layer::hide() {}
+#endif

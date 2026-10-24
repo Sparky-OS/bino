@@ -1,7 +1,18 @@
 find_package(Qt6 REQUIRED COMPONENTS GuiPrivate MultimediaPrivate)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(NativeVideo REQUIRED IMPORTED_TARGET wayland-client wayland-egl egl gl xext)
-pkg_check_modules(NativeDeclaration REQUIRED IMPORTED_TARGET stereo-declare>=1.7)
+pkg_check_modules(NativeDeclaration REQUIRED IMPORTED_TARGET stereo-declare>=1.6)
+include(CheckCXXSourceCompiles)
+include(CMakePushCheckState)
+cmake_push_check_state(RESET)
+set(CMAKE_REQUIRED_LIBRARIES PkgConfig::NativeDeclaration)
+check_cxx_source_compiles("#include <stereo-declare.h>
+int main() {
+    stereo_x11_child_place place = {0, 0, 1, 1, 1};
+    return stereo_declare_x11_child_place(nullptr, 0, &place);
+}" BINO_HAVE_X11_CHILD_PLACE)
+cmake_pop_check_state()
+add_compile_definitions(BINO_HAVE_X11_CHILD_PLACE=$<BOOL:${BINO_HAVE_X11_CHILD_PLACE}>)
 find_program(WAYLAND_SCANNER wayland-scanner REQUIRED)
 pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
 set(VIEWPORTER_XML "${WAYLAND_PROTOCOLS_DIR}/stable/viewporter/viewporter.xml")

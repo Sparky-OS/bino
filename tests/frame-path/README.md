@@ -320,3 +320,11 @@ only while visible playback controls need progress animation, schedules the
 remaining expiry deadline when paused, and uses frame/state/input notifications
 for other changes. Static locked controls need no timer. The OFF build retains
 its existing continuous update for alternating output.
+
+The native Wayland build requires libstereo-declare 1.6 or newer.
+CMake compiles and links a call to `stereo_declare_x11_child_place` before enabling
+version-8 X11 child placement. With 1.6 the native X11 class is an unavailable
+backend, and X11 keeps the existing Qt stereo/fallback route. With the API present,
+the native X11 implementation is compiled and still checks compositor capability.
+Configure in fresh build directories against each library; the feature result
+must be false for 1.6 and true for the retained 1.7 child-placement API.
