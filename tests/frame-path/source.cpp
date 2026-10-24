@@ -40,5 +40,20 @@ int main(int argc, char **argv)
     check(bino.inputMode() == Input_Right_Left, "inverted StereoMode is right-first input");
     open("case-10.mkv");
     check(bino.swapEyes(), "returning to the marked file restores its swap");
+    // Qt carries the decoder's frame metadata even when bounded file inspection
+    // could not reach a frame, and for sources that are not local files.
+    VideoFrame primary, secondary;
+    bool fresh = false;
+    VideoSink sink(&primary, &secondary, &fresh);
+    MetaData metadata;
+    metadata.inputModes.append(Input_Left_Right);
+    metadata.declaredInputs.append(true);
+    sink.newPlaylistEntry(PlaylistEntry(QUrl("file:///marked")), metadata);
+    QVideoFrameFormat format(QSize(320,180), QVideoFrameFormat::Format_RGBA8888);
+    format.setStereoMode(QVideoFrameFormat::StereoMode::TopBottom);
+    format.setStereoFlags(QVideoFrameFormat::StereoFlag::RightEyeFirst);
+    sink.processNewFrame(QVideoFrame(format));
+    check(sink.inputMode == Input_Bottom_Top && sink.inputDeclared,
+            "decoded frame mark takes priority over inspected packing");
     return failed ? 1 : 0;
 }
