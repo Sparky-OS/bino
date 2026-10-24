@@ -45,7 +45,6 @@ private:
     QActionGroup* _trackSubtitleActionGroup;
     QActionGroup* _3dSurroundActionGroup;
     QActionGroup* _3dInputActionGroup;
-    QActionGroup* _3dOutputActionGroup;
     QAction* _mediaTogglePauseAction;
     QAction* _mediaToggleVolumeMuteAction;
     QAction* _mediaVolumeIncAction;
@@ -82,7 +81,6 @@ public slots:
     void playlistWait();
     void threeDSurround();
     void threeDInput();
-    void threeDOutput();
     void mediaTogglePause();
     void mediaToggleVolumeMute();
     void mediaVolumeInc();
@@ -116,7 +114,6 @@ public:
 
     static Gui* instance();
 
-    void setOutputMode(OutputMode mode);
     void setSurroundVerticalFieldOfView(float vfov);
     void setFullscreen(bool f);
 };

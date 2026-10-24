@@ -136,3 +136,29 @@ The new size assertion checks both stages before the independent source-pixel ch
 An absent trace event also fails.
 When rendering moves to a separate native layer, move the target readback to that submitted layer's framebuffer; reading the ordinary overlay framebuffer would no longer test the video handoff.
 The final acceptance gate must additionally inspect the compositor surface declaration and buffer/destination sizes, check resizing and ordinary overlays in both eyes, and retain the mono and unsupported-transport controls.
+
+## Native video surfaces
+
+The native probe reads the EGL/GLX window framebuffer directly, asserts that its read framebuffer is zero, queries its drawable size and records its channel precision.
+Qt's framebuffer wrapper redirects zero to the widget FBO, so a readback without that assertion can accidentally verify the overlay instead of the submitted video.
+`--native-layer --check-native-size --check-passes` checks the submitted eyes against FFmpeg's decoded source pixels.
+`--layout lr|rl|tb|bt` describes the fixture's stored layout, independently of Bino's `PIXEL_MODE` input option.
+Use half-sized eye fixtures with the corresponding half-input modes and test odd eye dimensions as well.
+
+`PIXEL_HOLD=1` pauses playback and records the final submitted timestamp and packed buffer, including frames already queued when pause was requested.
+It captures the ordinary overlay framebuffer separately and obtains a compositor screen/window capture through ScreenShot2.
+`PIXEL_SUBTITLE=1` enables the fixture subtitle track and saves the original subtitle renderer's display-resolution image for comparison.
+The fixture text is `Native size: Aa Wm 0123456789`, covering the entire three-second clip.
+`compositor.py CASE` independently reconstructs both eyes from the address formula with one pixel-center bilinear resize, checks the output pixels and verifies identical opaque subtitle pixels.
+Its `--wrong-eye` control must fail.
+`PIXEL_WRAPPED=1` additionally puts the video in an ordinary QMainWindow with a menu.
+
+`PIXEL_LIFECYCLE=1 PIXEL_HOLD=1` retains native buffers across resize, hide/show, stereo-to-mono and mono-to-stereo stages.
+`PIXEL_WARMUP=1` replays the same fixture three times after cold shader compilation; timestamp-based source expectations and the required capture count do not change.
+This is a pixel-fidelity probe, not a throughput benchmark.
+Use `LP_NUM_THREADS=4` for the software renderer, in addition to the container CPU quota.
+
+`KWIN_BINARY` can select a locally built consumer; the default tests the installed compositor.
+The X11 native path requires compositor support version 8 and libstereo-declare 1.7 for independent child placement below its ordinary parent.
+The Wayland path uses the existing full-SBS surface declaration and viewport destination.
+Both keep the stored eye raster unchanged, while the ordinary Qt window paints subtitles and controls at display resolution.

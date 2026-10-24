@@ -225,7 +225,6 @@ Gui::Gui(OutputMode outputMode, float surroundVerticalFOV, bool fullscreen) :
     _3dInputActionGroup->addAction(threeDInAlternatingRL)->setData(int(Input_Alternating_RL));
     connect(threeDInAlternatingRL, SIGNAL(triggered()), this, SLOT(threeDInput()));
     addBinoAction(threeDInAlternatingRL, threeDInputAlternatingMenu);
-    _3dOutputActionGroup = new QActionGroup(this);
 
     QMenu* mediaMenu = addBinoMenu(tr("&Media"));
     _mediaToggleVolumeMuteAction = new QAction(tr("Mute audio"), this);
@@ -613,17 +612,6 @@ void Gui::threeDInput()
     QAction* a = _3dInputActionGroup->checkedAction();
     if (a) {
         Bino::instance()->setInputMode(static_cast<InputMode>(a->data().toInt()));
-        _widget->update();
-    }
-}
-
-void Gui::threeDOutput()
-{
-    QAction* a = _3dOutputActionGroup->checkedAction();
-    if (a) {
-        _widget->setOutputMode(static_cast<OutputMode>(a->data().toInt()));
-        QSettings settings;
-        settings.setValue("OutputMode", outputModeToString(_widget->outputMode()));
         _widget->update();
     }
 }
@@ -1031,20 +1019,6 @@ void Gui::updateActions()
         QAction* a = _3dInputActionGroup->actions()[i];
         a->setChecked(a->data().toInt() == int(inputMode));
     }
-    for (int i = 0; i < _3dOutputActionGroup->actions().size(); i++) {
-        QAction* a = _3dOutputActionGroup->actions()[i];
-        if (Bino::instance()->assumeStereoInputMode()) {
-            a->setEnabled(true);
-            a->setChecked(a->data().toInt() == int(_widget->outputMode()));
-            OutputMode outputMode = static_cast<OutputMode>(a->data().toInt());
-            if (outputMode == Output_OpenGL_Stereo)
-                a->setEnabled(_widget->isOpenGLStereo());
-        } else {
-            a->setEnabled(false);
-            a->setChecked(false);
-        }
-    }
-
     _mediaTogglePauseAction->setEnabled(Bino::instance()->playlistMode() && !Bino::instance()->stopped());
     _mediaSeekFwd1SecAction->setEnabled(Bino::instance()->playlistMode() && !Bino::instance()->stopped());
     _mediaSeekBwd1SecAction->setEnabled(Bino::instance()->playlistMode() && !Bino::instance()->stopped());
@@ -1058,12 +1032,6 @@ void Gui::updateActions()
     _widget->update();
 }
 
-void Gui::setOutputMode(OutputMode mode)
-{
-    (void)mode; // the output is always OpenGL stereo
-    _widget->setOutputMode(Output_OpenGL_Stereo);
-    _widget->update();
-}
 
 void Gui::setSurroundVerticalFieldOfView(float vfov)
 {
@@ -1113,9 +1081,5 @@ void Gui::contextMenuEvent(QContextMenuEvent* event)
 
 void Gui::moveEvent(QMoveEvent*)
 {
-    if (_widget->outputMode() == Output_Even_Odd_Rows
-            || _widget->outputMode() == Output_Even_Odd_Columns
-            || _widget->outputMode() == Output_Checkerboard) {
-        _widget->update();
-    }
+    _widget->update();
 }

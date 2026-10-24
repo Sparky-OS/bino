@@ -10,13 +10,14 @@ set(CMAKE_FIND_PACKAGE_SORT_ORDER NATURAL)
 set(CMAKE_FIND_PACKAGE_SORT_DIRECTION DEC)
 set(CMAKE_AUTOMOC ON)
 
-project(Bino LANGUAGES CXX)
+project(Bino LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 # Required: Qt6
 find_package(Qt6 6.7.0 REQUIRED COMPONENTS OpenGLWidgets Multimedia LinguistTools)
+include(cmake/NativeVideo.cmake)
 # Optional: Sparky Stereo OS's stereo layer, the rule that the players of the edition share to tell what a 3D video is
 find_package(StereoLayer 1.5 CONFIG QUIET)
 if(StereoLayer_FOUND)
@@ -67,6 +68,7 @@ qt6_add_resources(bino "misc" PREFIX "/" FILES
 	res/bino-logo-small.svg
 	res/bino-logo-small-512.png
 	res/bino-fallback-frame.png)
+bino_native_video(bino ${CMAKE_CURRENT_SOURCE_DIR})
 set_target_properties(bino PROPERTIES WIN32_EXECUTABLE TRUE)
 target_link_libraries(bino PRIVATE Qt6::OpenGLWidgets Qt6::Multimedia ${QVR_LIBRARIES})
 if(StereoLayer_FOUND)

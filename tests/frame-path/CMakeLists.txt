@@ -11,7 +11,7 @@ target_link_libraries(transfer-trace PRIVATE dl)
 set(CMAKE_AUTOMOC ON)
 find_package(Qt6 REQUIRED COMPONENTS OpenGLWidgets)
 find_package(StereoLayer REQUIRED CONFIG)
-add_executable(widget-probe widget.cpp
+add_executable(widget-probe widget.cpp native-target.cpp
     ../../src/log.cpp ../../src/tools.cpp ../../src/screen.cpp ../../src/modes.cpp
     ../../src/metadata.cpp ../../src/playlist.cpp ../../src/videoframe.cpp
     ../../src/videosink.cpp ../../src/bino.cpp ../../src/widget.cpp
@@ -28,3 +28,10 @@ qt_add_resources(widget-probe "fixture-resources" PREFIX "/" BASE ../.. FILES
     ../../src/shader-display.vert.glsl ../../src/shader-display.frag.glsl
     ../../res/bino-logo-small.svg ../../res/bino-logo-small-512.png
     ../../res/bino-fallback-frame.png)
+
+include(../../cmake/NativeVideo.cmake)
+bino_native_video(widget-probe ${CMAKE_CURRENT_SOURCE_DIR}/../..)
+
+find_package(Qt6 REQUIRED COMPONENTS DBus)
+add_executable(screen-capture capture.cpp)
+target_link_libraries(screen-capture PRIVATE Qt6::Gui Qt6::DBus)

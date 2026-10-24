@@ -1170,9 +1170,26 @@ void Bino::overlayToTexture(const QImage& img, unsigned int tex)
     glGenerateMipmap(GL_TEXTURE_2D);
 }
 
-void Bino::preRenderProcess(int screenWidth, int screenHeight,
-        int* viewCountPtr, int* viewWidthPtr, int* viewHeightPtr, float* frameDisplayAspectRatioPtr, bool* surroundPtr)
+void Bino::paintOverlays(QPainter& painter, const QSize& size)
 {
+    if (!_frame.isValid()) {
+        _overlayAudio.redraw(size.width(), size.height());
+        painter.drawImage(QPoint(), _overlayAudio.image());
+    }
+    if (!_frame.subtitle.isEmpty()) {
+        _overlaySubtitle.redraw(size.width(), size.height());
+        painter.drawImage(QPoint(), _overlaySubtitle.image());
+    }
+    if (_overlayUIShow) {
+        _overlayUI.redraw(size.width(), size.height());
+        painter.drawImage(QPoint(), _overlayUI.image());
+    }
+}
+
+void Bino::preRenderProcess(int screenWidth, int screenHeight,
+        int* viewCountPtr, int* viewWidthPtr, int* viewHeightPtr, float* frameDisplayAspectRatioPtr, bool* surroundPtr, bool separateOverlays)
+{
+    _separateOverlays = separateOverlays;
     int viewCount = 2;
     int viewWidth = _frame.width;
     int viewHeight = _frame.height;
@@ -1231,7 +1248,7 @@ void Bino::preRenderProcess(int screenWidth, int screenHeight,
      * we want the screen resolution to determine the view texture size
      * so that overlays (subtitles and/or UI) don't look as crappy as the
      * video. */
-    if (screenWidth > viewWidth || screenHeight > viewHeight) {
+    if (!separateOverlays && (screenWidth > viewWidth || screenHeight > viewHeight)) {
         if (screenWidth / viewWidth > screenHeight / viewHeight) {
             viewWidth = screenWidth;
             viewHeight = viewWidth / frameDisplayAspectRatio;
@@ -1270,7 +1287,7 @@ void Bino::preRenderProcess(int screenWidth, int screenHeight,
         }
         // Render the subtitle
         _overlaySubtitle.updateParameters(_frame.subtitle);
-        if (_overlaySubtitle.redraw(viewWidth, viewHeight)) {
+        if (!separateOverlays && _overlaySubtitle.redraw(viewWidth, viewHeight)) {
             overlayToTexture(_overlaySubtitle.image(), _overlayTexs[1]);
         }
         // Done.
@@ -1278,13 +1295,13 @@ void Bino::preRenderProcess(int screenWidth, int screenHeight,
     }
     // Render the audio overlay
     if (!_frame.isValid()) {
-        if (_overlayAudio.redraw(viewWidth, viewHeight)) {
+        if (!separateOverlays && _overlayAudio.redraw(viewWidth, viewHeight)) {
             overlayToTexture(_overlayAudio.image(), _overlayTexs[0]);
         }
     }
     // Render the overlay UI into
     if (_overlayUIShow) {
-        if (_overlayUI.redraw(viewWidth, viewHeight)) {
+        if (!separateOverlays && _overlayUI.redraw(viewWidth, viewHeight)) {
             overlayToTexture(_overlayUI.image(), _overlayTexs[2]);
         }
     }
@@ -1437,9 +1454,9 @@ void Bino::render(
     _viewPrg.setUniformValue("overlayTex0", 1);
     _viewPrg.setUniformValue("overlayTex1", 2);
     _viewPrg.setUniformValue("overlayTex2", 3);
-    _viewPrg.setUniformValue("showOverlayAudio", !_frame.isValid());
-    _viewPrg.setUniformValue("showOverlaySubtitle", !_frame.subtitle.isEmpty());
-    _viewPrg.setUniformValue("showOverlayUI", _overlayUIShow);
+    _viewPrg.setUniformValue("showOverlayAudio", !_separateOverlays && !_frame.isValid());
+    _viewPrg.setUniformValue("showOverlaySubtitle", !_separateOverlays && !_frame.subtitle.isEmpty());
+    _viewPrg.setUniformValue("showOverlayUI", !_separateOverlays && _overlayUIShow);
     QSize storedView(qRound(_frame.width * viewFactorX), qRound(_frame.height * viewFactorY));
     if (rotation == 1 || rotation == 3)
         storedView.transpose();

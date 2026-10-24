@@ -26,6 +26,7 @@
 
 #include "modes.hpp"
 #include "bino.hpp"
+#include "nativevideolayer.hpp"
 
 
 class Widget : public QOpenGLWidget, protected QOpenGLExtraFunctions
@@ -33,13 +34,13 @@ class Widget : public QOpenGLWidget, protected QOpenGLExtraFunctions
 Q_OBJECT
 
 private:
+    std::unique_ptr<NativeVideoLayer> _nativeLayer;
     QTimer _updateTimer;
     QSize _sizeHint;
     int _width, _height;
     float _lastFrameRelWidth, _lastFrameRelHeight;
 
     OutputMode _outputMode;
-    int _alternatingLastView; // last view displayed in Mode_Alternating (0 or 1)
 
     bool _inOverlayUIEvent;
     float _surroundVerticalFOVDefault;
@@ -56,17 +57,20 @@ private:
     int _viewTexWidth[2], _viewTexHeight[2];
     unsigned int _quadVao;
     QOpenGLShaderProgram _displayPrg;
-    int _displayPrgOutputMode;
 
-    void rebuildDisplayPrgIfNecessary(OutputMode outputMode);
+    void rebuildDisplayPrgIfNecessary();
     QPointF toView(const QPointF& pos) const;
 
+protected:
+    virtual void nativeFrameRendered(const QSize&, int) {}
+
 public:
+    ~Widget() override;
+    bool usesNativeVideo() const { return bool(_nativeLayer); }
     Widget(OutputMode outputMode, float surroundVerticalFOV, QWidget* parent = nullptr);
 
     bool isOpenGLStereo() const;
     OutputMode outputMode() const;
-    void setOutputMode(OutputMode mode);
     void setSurroundVerticalFieldOfView(float vfov);
     void resetSurroundView();
 

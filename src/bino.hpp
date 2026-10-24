@@ -116,6 +116,7 @@ private:
     // for rendering the overlay UI:
     OverlayUI _overlayUI;
     bool _overlayUIShow;
+    bool _separateOverlays = false;
 
     void startCaptureMode(bool withAudioInput, const QAudioDevice& audioInputDevice, InputMode inputMode);
     void rebuildColorPrgIfNecessary(int planeFormat, bool colorRangeSmall, int colorSpace, int colorTransfer);
@@ -203,6 +204,7 @@ public:
     /* Functions shared by GUI and VR mode */
     bool initProcess();
     void updateMainProcess();
+    void paintOverlays(QPainter& painter, const QSize& size);
     void preRenderProcess(
             int screenWidth,
             int screenHeight,
@@ -210,7 +212,7 @@ public:
             int* viewWidth = nullptr,
             int* viewHeight = nullptr,
             float* frameDisplayAspectRatio = nullptr,
-            bool* surround = nullptr);
+            bool* surround = nullptr, bool separateOverlays = false);
     void render(
             const QVector3D& unitedScreenBottomLeft, const QVector3D& unitedScreenBottomRight, const QVector3D& unitedScreenTopLeft,
             const QVector3D& intersectedScreenBottomLeft, const QVector3D& intersectedScreenBottomRight, const QVector3D& intersectedScreenTopLeft,

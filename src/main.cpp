@@ -133,8 +133,9 @@ int main(int argc, char* argv[])
             QCommandLineParser::tr("Get control commands from a Unix Domain Socket."), "name" });
     parser.addOption({ "control-tcp",
             QCommandLineParser::tr("Get control commands by listening on a TCP port."), "[ip|name]:port" });
-    parser.addOption({ "stereo",
-            QCommandLineParser::tr("Enable OpenGL quad-buffered stereo support.") });
+    QCommandLineOption legacyStereo("stereo");
+    legacyStereo.setFlags(QCommandLineOption::HiddenFromHelp);
+    parser.addOption(legacyStereo);
     parser.addOption({ "opengles",
             QCommandLineParser::tr("Use OpenGL ES instead of Desktop OpenGL.") });
     parser.addOption({ "vr",
@@ -205,17 +206,10 @@ int main(int argc, char* argv[])
             "left-right, left-right-half, right-left, right-left-half, "
             "alternating-left-right, alternating-right-left"),
             "mode" });
-    parser.addOption({ { "o", "output" },
-            QCommandLineParser::tr("Set output mode (%1).").arg("left, right, stereo, alternating, "
-            "hdmi-frame-pack, "
-            "left-right, left-right-half, right-left, right-left-half, "
-            "top-bottom, top-bottom-half, bottom-top, bottom-top-half, "
-            "even-odd-rows, even-odd-columns, checkerboard, "
-            "red-cyan-dubois, red-cyan-full-color, red-cyan-half-color, red-cyan-monochrome, "
-            "green-magenta-dubois, green-magenta-full-color, green-magenta-half-color, green-magenta-monochrome, "
-            "amber-blue-dubois, amber-blue-full-color, amber-blue-half-color, amber-blue-monochrome, "
-            "red-green-monochrome, red-blue-monochrome"),
-            "mode" });
+    // Accepted for existing launchers; screen formats belong to the compositor.
+    QCommandLineOption legacyOutput({ "o", "output" }, QString(), "mode");
+    legacyOutput.setFlags(QCommandLineOption::HiddenFromHelp);
+    parser.addOption(legacyOutput);
     parser.addOption({ { "s", "surround" },
             QCommandLineParser::tr("Set surround mode (%1).").arg("360, 180, off"),
             "mode" });
@@ -290,19 +284,6 @@ int main(int argc, char* argv[])
             return 1;
         }
     }
-    OutputMode outputMode = Output_Red_Cyan_Dubois;
-    if (parser.isSet("stereo")) {
-        outputMode = Output_OpenGL_Stereo;
-    }
-    if (parser.isSet("output")) {
-        bool ok;
-        outputMode = outputModeFromString(parser.value("output"), &ok);
-        if (!ok) {
-            LOG_FATAL("%s", qPrintable(QCommandLineParser::tr("Invalid argument for option %1").arg("--output")));
-            return 1;
-        }
-    }
-
     // Lists of available devices. Initialize these lists only when necessary because
     // this can take some time!
     QList<QAudioDevice> audioOutputDevices;
@@ -694,8 +675,7 @@ int main(int argc, char* argv[])
     wantOpenGLES = true;
 # endif
 #endif
-    if (wantOpenGLES)
-        format.setRenderableType(QSurfaceFormat::OpenGLES);
+    format.setRenderableType(wantOpenGLES ? QSurfaceFormat::OpenGLES : QSurfaceFormat::OpenGL);
     initializeOpenGLType(format);
     if (OpenGLType != OpenGL_Type_WebGL) {
         if (OpenGLType == OpenGL_Type_OpenGLES) {
@@ -704,9 +684,15 @@ int main(int argc, char* argv[])
             format.setProfile(QSurfaceFormat::CoreProfile);
             format.setVersion(3, 3);
         }
-        if (guiMode) {
+        if (guiMode && !NativeVideoLayer::supported()) {
             // Always get quad-buffered stereo: the output is always OpenGL stereo.
             format.setOption(QSurfaceFormat::StereoBuffers);
+        }
+        if (guiMode && NativeVideoLayer::supported()) {
+            format.setRedBufferSize(8);
+            format.setGreenBufferSize(8);
+            format.setBlueBufferSize(8);
+            format.setAlphaBufferSize(8);
         }
         QSurfaceFormat::setDefaultFormat(format);
     }
@@ -763,10 +749,8 @@ int main(int argc, char* argv[])
         return 1;
 #endif
     } else {
-        // The output is always OpenGL stereo, whatever was saved or given on the command line
-        outputMode = Output_OpenGL_Stereo;
         // Start the GUI
-        Gui gui(outputMode, surroundVerticalFOV, parser.isSet("fullscreen"));
+        Gui gui(Output_OpenGL_Stereo, surroundVerticalFOV, parser.isSet("fullscreen"));
         gui.show();
         // wait for several seconds to process all events before starting
         // the playlist, because otherwise playing might be finished before
