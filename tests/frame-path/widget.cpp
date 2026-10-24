@@ -20,16 +20,22 @@
 #include "tools.hpp"
 #include "log.hpp"
 #include "native-target.hpp"
+#include "repaint.hpp"
 
 class Probe : public Widget
 {
 public:
     QString directory;
     QSet<QString> captured;
+    std::unique_ptr<RepaintProbe> repaint;
     bool held = false;
     int stage = 0;
     Probe(bool stereo, const QString& dir, QWidget* parent = nullptr) :
-        Widget(stereo ? Output_OpenGL_Stereo : Output_Left, 90.0f, parent), directory(dir) {}
+        Widget(stereo ? Output_OpenGL_Stereo : Output_Left, 90.0f, parent), directory(dir)
+    {
+        if (qEnvironmentVariableIsSet("PIXEL_REPAINT"))
+            repaint = std::make_unique<RepaintProbe>(*this, dir);
+    }
 
 protected:
     void nativeFrameRendered(const QSize&, int views) override
@@ -56,7 +62,7 @@ protected:
                 }
             });
         }
-        if ((pts < 500000 || pts > 1500000) && !held)
+        if ((pts < 500000 || pts > 1500000) && !held && !repaint)
             return;
         GLint framebuffer = -1;
         glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &framebuffer);
@@ -72,6 +78,7 @@ protected:
         QImage packed(w, h, QImage::Format_RGBA8888);
         glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, packed.bits());
         packed = packed.flipped(Qt::Vertical);
+        if (repaint) repaint->native(packed, views);
         FrameTrace::event("target_geometry", FrameTrace::timestamp(), 0, pts, w / views, h);
         FrameTrace::event("packed_geometry", FrameTrace::timestamp(), 0, pts, w, h);
         if (held) {
@@ -101,6 +108,13 @@ protected:
     void paintGL() override
     {
         Widget::paintGL();
+        if (repaint) {
+            QImage target(width(), height(), QImage::Format_RGBA8888);
+            glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject(currentTargetBuffer()));
+            glReadPixels(0, 0, width(), height(), GL_RGBA, GL_UNSIGNED_BYTE, target.bits());
+            repaint->paint(target.flipped(Qt::Vertical), FrameTrace::pts, int(currentTargetBuffer()));
+            return;
+        }
         if (usesNativeVideo()) {
             if (held) {
                 QImage overlay(width(), height(), QImage::Format_RGBA8888);
@@ -198,7 +212,7 @@ int main(int argc, char** argv)
     format.setSamples(0);
     QSurfaceFormat::setDefaultFormat(format);
     QApplication app(argc, argv);
-    if (qEnvironmentVariableIsSet("PIXEL_UI")) {
+    if (qEnvironmentVariableIsSet("PIXEL_UI") || qEnvironmentVariableIsSet("PIXEL_REPAINT")) {
         QIcon::setThemeSearchPaths({ "/work/test-icons" });
         QIcon::setThemeName("breeze-dark");
         for (const QString& name : { "media-playback-start", "media-playback-pause",
@@ -254,7 +268,7 @@ int main(int argc, char** argv)
         for (int delay : {4000, 8000, 12000})
             QTimer::singleShot(delay, &app, [&]() { bino.setPosition(0.0f); bino.play(); });
     }
-    QTimer::singleShot(qEnvironmentVariableIsSet("PIXEL_LIFECYCLE") ? 25000 : qEnvironmentVariableIsSet("PIXEL_HOLD") ? 12000 : warmup ? 16000 : 3500, &app, [&]() {
+    QTimer::singleShot(qEnvironmentVariableIsSet("PIXEL_REPAINT") ? 25000 : qEnvironmentVariableIsSet("PIXEL_LIFECYCLE") ? 25000 : qEnvironmentVariableIsSet("PIXEL_HOLD") ? 12000 : warmup ? 16000 : 3500, &app, [&]() {
         if (widget.isOpenGLStereo() != stereo || widget.captured.size() < (stereo && QString::fromLocal8Bit(argv[3]) != "mono" ? 30 : 15)) {
             qWarning("unexpected stereo capability %d or capture count %lld",
                     widget.isOpenGLStereo(), static_cast<long long>(widget.captured.size()));
