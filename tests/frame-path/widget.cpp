@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFile>
 #include <QSet>
+#include <QOpenGLFunctions_3_3_Core>
 #include <QSurfaceFormat>
 #include <QTimer>
 #include "widget.hpp"
@@ -29,9 +30,34 @@ protected:
         const QString key = QString::number(pts) + "-" + QString::number(currentTargetBuffer());
         if (captured.contains(key))
             return;
-        QImage pixels(width(), height(), QImage::Format_RGBA8888);
         glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject(currentTargetBuffer()));
-        glReadPixels(0, 0, width(), height(), GL_RGBA, GL_UNSIGNED_BYTE, pixels.bits());
+        GLint type = 0, object = 0, bufferWidth = 0, bufferHeight = 0;
+        glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &type);
+        glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &object);
+        if (type == GL_TEXTURE) {
+            QOpenGLFunctions_3_3_Core functions;
+            functions.initializeOpenGLFunctions();
+            GLint previous;
+            glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous);
+            glBindTexture(GL_TEXTURE_2D, object);
+            functions.glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &bufferWidth);
+            functions.glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &bufferHeight);
+            glBindTexture(GL_TEXTURE_2D, previous);
+        } else if (type == GL_RENDERBUFFER) {
+            GLint previous;
+            glGetIntegerv(GL_RENDERBUFFER_BINDING, &previous);
+            glBindRenderbuffer(GL_RENDERBUFFER, object);
+            glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &bufferWidth);
+            glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &bufferHeight);
+            glBindRenderbuffer(GL_RENDERBUFFER, previous);
+        } else {
+            qFatal("unexpected target attachment");
+        }
+        FrameTrace::event("target_geometry", FrameTrace::timestamp(), 0, pts, bufferWidth, bufferHeight);
+        QImage pixels(bufferWidth, bufferHeight, QImage::Format_RGBA8888);
+        glReadPixels(0, 0, bufferWidth, bufferHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixels.bits());
         if (!pixels.mirrored().save(directory + "/" + key + ".png"))
             qFatal("cannot save target buffer");
         captured.insert(key);

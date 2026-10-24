@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eu
-export CASE_DIR=/work/evidence/m2/$1
+export CASE_DIR=${CASE_ROOT:-/work/evidence/m2}/$1
 export PIXEL_INPUT=$2 PIXEL_TARGET=$3
 export PROBE_BINARY=${PROBE_BINARY:-/work/probes/widget-probe}
 test ! -e "$CASE_DIR"

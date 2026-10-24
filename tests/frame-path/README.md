@@ -117,3 +117,22 @@ Keep a capture set from the preceding commit as a failing control.
 Run `--swap-expected` and `--stale-expected` on the corrected software captures; both must still fail.
 Compare all common AMD stereo, mono and non-stereo-target captures with the preceding commit byte for byte in RGB.
 Passing this sampling test alone does not establish native-resolution delivery to the compositor.
+
+## Native delivery regression
+
+The probe queries the dimensions of the actual color attachment of each Qt target framebuffer, reads that full target, and records `target_geometry`.
+This is separate from Bino's intermediate `geometry` trace.
+Run a source eye at 320×180 with a 640×360 widget to expose enlargement:
+
+```sh
+CASE_ROOT=/work/evidence/m3 PIXEL_WIDTH=640 PIXEL_HEIGHT=360 \
+    /work/bino/tests/frame-path/pixel-case.sh native-before stereo stereo
+python3 /work/bino/tests/frame-path/pixels.py check /work/evidence/m3/native-before \
+    --clip /work/clips/pixels/stereo.mkv --check-native-size --check-passes
+```
+
+The uncorrected native-delivery path fails with both intermediate and target dimensions 640×360 instead of the source eye's 320×180.
+The new size assertion checks both stages before the independent source-pixel check.
+An absent trace event also fails.
+When rendering moves to a separate native layer, move the target readback to that submitted layer's framebuffer; reading the ordinary overlay framebuffer would no longer test the video handoff.
+The final acceptance gate must additionally inspect the compositor surface declaration and buffer/destination sizes, check resizing and ordinary overlays in both eyes, and retain the mono and unsupported-transport controls.

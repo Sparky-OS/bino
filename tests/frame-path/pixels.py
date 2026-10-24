@@ -18,6 +18,7 @@ p.add_argument("--height", type=int, default=180)
 p.add_argument("--mono", action="store_true")
 p.add_argument("--fallback", action="store_true")
 p.add_argument("--check-passes", action="store_true")
+p.add_argument("--check-native-size", action="store_true")
 p.add_argument("--swap-expected", action="store_true")
 p.add_argument("--stale-expected", action="store_true")
 a = p.parse_args()
@@ -43,6 +44,15 @@ decoded = subprocess.check_output(["ffmpeg", "-v", "error", "-i", str(a.clip),
                                    "-threads", "4", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"])
 frames = np.frombuffer(decoded, np.uint8).reshape(-1, h, w, 3)
 assert len(frames) == 72
+rows = list(csv.DictReader((a.directory / "trace.csv").open()))
+if a.check_native_size:
+    measured = {}
+    for event in ("geometry", "target_geometry"):
+        sizes = {(int(row["arg1"]), int(row["arg2"])) for row in rows
+                 if row["event"] == event and 500000 <= int(row["pts_us"]) <= 1500000}
+        measured[event] = sizes
+    assert all(sizes == {(ew, h)} for sizes in measured.values()), (
+        "not native eye dimensions", measured, (ew, h))
 captures = sorted(a.directory.glob("*-*.png"))
 seen = collections.defaultdict(set)
 max_error = 0
@@ -69,7 +79,6 @@ assert all(len(values) >= 20 for values in seen.values()), seen
 if not a.fallback:
     assert seen[0] == seen[1], "unpaired eye captures"
 
-rows = list(csv.DictReader((a.directory / "trace.csv").open()))
 views = []
 passes = collections.Counter()
 bad = []
