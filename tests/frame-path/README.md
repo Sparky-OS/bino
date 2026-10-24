@@ -60,8 +60,9 @@ python3 /work/bino/tests/frame-path/analyze.py /work/evidence/vaapi-baseline --c
 ```
 
 The last command is deliberately red on the uncorrected renderer: the expected work is one view pass per eye, but it renders both views in each of the two stereo callbacks.
+After the current-target selection fix, the same command must pass with two view passes per stereo pair.
 The analyzer also rejects missing, duplicated or reordered sink timestamps and insufficient stereo pairs.
-This is a reproduction to turn green in the subsequent fix, not a claim that a fix has already passed.
+Keep the failing baseline beside the corrected run so the gate's sensitivity remains reproducible.
 The software and VA-API sink cases must each deliver the 288 distinct source timestamps.
 
 The report includes callback counts and durations within source PTS 1–11 seconds.

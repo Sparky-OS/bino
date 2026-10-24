@@ -280,8 +280,10 @@ void Widget::paintGL()
         case Output_Alternating:
             needThisView = (v != _alternatingLastView);
             break;
-        case Output_HDMI_Frame_Pack:
         case Output_OpenGL_Stereo:
+            needThisView = (v == (currentTargetBuffer() == QOpenGLWidget::LeftBuffer ? 0 : 1));
+            break;
+        case Output_HDMI_Frame_Pack:
         case Output_Left_Right:
         case Output_Left_Right_Half:
         case Output_Right_Left:
