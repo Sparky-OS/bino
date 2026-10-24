@@ -64,7 +64,7 @@ static float linearToHLG(float sig)
     return a * logf(12.0f * sig - b) + c;
 }
 
-void VideoFrame::update(InputMode im, SurroundMode sm, const QVideoFrame& frame, bool newSrc)
+void VideoFrame::update(InputMode im, SurroundMode sm, const QVideoFrame& frame, bool newSrc, bool deferMapping)
 {
     if (qframe.isMapped())
         qframe.unmap();
@@ -149,7 +149,7 @@ void VideoFrame::update(InputMode im, SurroundMode sm, const QVideoFrame& frame,
             image = qframe.toImage();
             image.convertTo(QImage::Format_RGB32);
         } else {
-            storage = Storage_Mapped;
+            storage = Storage_Deferred;
             pixelFormat = qframe.pixelFormat();
             // Heuristic used in qtmultimedia/src/multimedia/video/qvideotexturehelper.cpp:
             colorSpace = (qframe.surfaceFormat().frameHeight() > 576 ? CS_BT709 : CS_BT601);
@@ -200,16 +200,9 @@ void VideoFrame::update(InputMode im, SurroundMode sm, const QVideoFrame& frame,
                 masteringWhite = linearToHLG(qframe.surfaceFormat().maxLuminance() / 100.0f);
                 break;
             }
-            {
-                FrameTrace::Scope trace("map", qframe.startTime(), qframe.handleType(), qframe.pixelFormat());
-                qframe.map(QVideoFrame::ReadOnly);
-            }
-            planeCount = qframe.planeCount();
-            for (int p = 0; p < planeCount; p++) {
-                bytesPerLine[p] = qframe.bytesPerLine(p);
-                bytesPerPlane[p] = qframe.mappedBytes(p);
-                mappedBits[p] = qframe.bits(p);
-            }
+            planeCount = 0;
+            if (!deferMapping)
+                mapPixels();
         }
         subtitle = qframe.subtitleText();
         subtitle.replace(QLatin1Char('\n'), QChar::LineSeparator); // qvideoframe.cpp does this
@@ -234,9 +227,26 @@ void VideoFrame::update(InputMode im, SurroundMode sm, const QVideoFrame& frame,
     }
 }
 
+bool VideoFrame::mapPixels()
+{
+    if (storage != Storage_Deferred)
+        return true;
+    FrameTrace::Scope trace("map", qframe.startTime(), qframe.handleType(), qframe.pixelFormat());
+    if (!qframe.map(QVideoFrame::ReadOnly))
+        return false;
+    storage = Storage_Mapped;
+    planeCount = qframe.planeCount();
+    for (int p = 0; p < planeCount; p++) {
+        bytesPerLine[p] = qframe.bytesPerLine(p);
+        bytesPerPlane[p] = qframe.mappedBytes(p);
+        mappedBits[p] = qframe.bits(p);
+    }
+    return true;
+}
+
 void VideoFrame::reUpdate()
 {
-    update(inputMode, surroundMode, qframe, false);
+    update(inputMode, surroundMode, qframe, false, storage == Storage_Deferred);
 }
 
 void VideoFrame::invalidate()
@@ -252,6 +262,17 @@ void VideoFrame::forceInvalidate()
 
 QDataStream &operator<<(QDataStream& ds, const VideoFrame& f)
 {
+    // Inter-process VR transport needs CPU bytes even when local rendering imports.
+    if (f.storage == VideoFrame::Storage_Deferred) {
+        VideoFrame mapped = f;
+        if (!mapped.mapPixels()) {
+            ds.setStatus(QDataStream::WriteFailed);
+            return ds;
+        }
+        ds << mapped;
+        mapped.qframe.unmap();
+        return ds;
+    }
     ds << static_cast<int>(f.inputMode);
     ds << static_cast<int>(f.surroundMode);
     ds << f.subtitle;
@@ -259,6 +280,9 @@ QDataStream &operator<<(QDataStream& ds, const VideoFrame& f)
     ds << f.height;
     ds << f.aspectRatio;
     switch (f.storage) {
+    case VideoFrame::Storage_Deferred:
+        ds.setStatus(QDataStream::WriteFailed);
+        return ds;
     case VideoFrame::Storage_Mapped:
     case VideoFrame::Storage_Copied:
         ds << static_cast<int>(VideoFrame::Storage_Copied);
@@ -299,6 +323,9 @@ QDataStream &operator>>(QDataStream& ds, VideoFrame& f)
     ds >> tmp;
     f.storage = static_cast<enum VideoFrame::Storage>(tmp);
     switch (f.storage) {
+    case VideoFrame::Storage_Deferred:
+        ds.setStatus(QDataStream::ReadCorruptData);
+        return ds;
     case VideoFrame::Storage_Mapped: // cannot happen, see above
     case VideoFrame::Storage_Copied:
         f.image = QImage();

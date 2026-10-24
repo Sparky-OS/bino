@@ -21,6 +21,7 @@ p.add_argument("--fallback", action="store_true")
 p.add_argument("--check-passes", action="store_true")
 p.add_argument("--check-native-size", action="store_true")
 p.add_argument("--native-layer", action="store_true")
+p.add_argument("--accurate-yuv", action="store_true")
 p.add_argument("--swap-expected", action="store_true")
 p.add_argument("--stale-expected", action="store_true")
 a = p.parse_args()
@@ -49,7 +50,8 @@ if a.action == "make":
     raise SystemExit(0)
 
 decoded = subprocess.check_output(["ffmpeg", "-v", "error", "-i", str(a.clip),
-                                   "-threads", "4", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"])
+                                   "-threads", "4", *(["-sws_flags", "accurate_rnd+full_chroma_int"] if a.accurate_yuv else []),
+                                   "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"])
 frames = np.frombuffer(decoded, np.uint8).reshape(-1, stored_h, stored_w, 3)
 if not a.mono:
     eyes = [frames[:, :h], frames[:, h:]] if a.layout in ("tb", "bt") else [frames[:, :, :ew], frames[:, :, ew:]]

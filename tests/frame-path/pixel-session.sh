@@ -28,7 +28,7 @@ if [ -n "${PIXEL_HOLD:-}" ]; then
     exit 0
 fi
 set +e
-timeout 20 "$PROBE_BINARY" "${PIXEL_CLIP:-/work/clips/pixels/$PIXEL_INPUT.mkv}" "$CASE_DIR" "$PIXEL_INPUT" "$PIXEL_TARGET" > "$CASE_DIR/app.log" 2>&1
+timeout "${PIXEL_TIMEOUT:-20}" "$PROBE_BINARY" "${PIXEL_CLIP:-/work/clips/pixels/$PIXEL_INPUT.mkv}" "$CASE_DIR" "$PIXEL_INPUT" "$PIXEL_TARGET" > "$CASE_DIR/app.log" 2>&1
 rc=$?
 printf '%s\n' "$rc" > "$CASE_DIR/app-exit.txt"
 exit "$rc"

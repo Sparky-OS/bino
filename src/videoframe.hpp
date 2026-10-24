@@ -32,22 +32,24 @@ class VideoFrame
 Q_DECLARE_TR_FUNCTIONS(VideoFrame)
 
 public:
-    // The pixel data can be represented in one of three ways:
+    // The pixel data can be represented in one of four ways:
     // 1. mapped data, via bytesPerLine and mappedBits
     // 2. copied data, via bytesPerLine and bits
     // 3. as a fallback: QImage
+    // 4. a retained QVideoFrame awaiting texture import or mapping
     // The QImage fallback is used when the frame pixel format or some other
     // of its properties cannot be handled in our texture upload / color conversion
     // pipeline. In that case, we let the frame convert itself to QImage and convert
     // that to a fallback pixel format that can always be handled.
-    // The mapped data is the preferred option since it is the fastest. On single-process
-    // instances, it is all we need.
+    // The edition retains the QVideoFrame until the renderer can try texture import.
+    // Mapping remains the fallback for software frames and unavailable imports.
     // The copied data is used to represent mapped data after it has been serialized on the
     // main process and deserialized on a child process.
     enum Storage {
         Storage_Mapped, // mapped data
         Storage_Copied, // copied data
-        Storage_Image   // QImage
+        Storage_Image,  // QImage
+        Storage_Deferred // retained QVideoFrame, try texture import before mapping
     };
 
     enum ColorSpace {
@@ -103,7 +105,8 @@ public:
     enum Fallback fallback;
 
     bool isValid() const;
-    void update(InputMode im, SurroundMode ts, const QVideoFrame& frame, bool newSrc);
+    void update(InputMode im, SurroundMode ts, const QVideoFrame& frame, bool newSrc, bool deferMapping = false);
+    bool mapPixels();
     void reUpdate();
     void invalidate();
     void forceInvalidate();

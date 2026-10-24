@@ -95,9 +95,9 @@ void VideoSink::processNewFrame(const QVideoFrame& frame)
         needExtFrame = false;
     }
     if (updateExtFrame) {
-        this->extFrame->update(inputMode, surroundMode, frame, frameCounter == 0);
+        this->extFrame->update(inputMode, surroundMode, frame, frameCounter == 0, BINO_STEREO_DESKTOP);
     } else {
-        this->frame->update(inputMode, surroundMode, frame, frameCounter == 0);
+        this->frame->update(inputMode, surroundMode, frame, frameCounter == 0, BINO_STEREO_DESKTOP);
         this->extFrame->invalidate();
     }
     if (!needExtFrame) {

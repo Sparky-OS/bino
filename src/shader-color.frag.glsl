@@ -19,6 +19,7 @@
  */
 
 uniform sampler2D plane0;
+uniform int channelOrder;
 uniform sampler2D plane1;
 uniform sampler2D plane2;
 uniform sampler2D plane3;
@@ -65,7 +66,8 @@ void main(void)
     vec3 yuv = vec3(1.0, 0.0, 0.0);
     vec3 rgb = vec3(0.0, 1.0, 0.0);
     if (planeFormat == Format_RGB) {
-        rgb = texture(plane0, vtexcoord).rgb;
+        vec4 sample0 = texture(plane0, vtexcoord);
+        rgb = channelOrder == 1 ? sample0.gba : channelOrder == 2 ? sample0.abg : sample0.rgb;
     } else if (planeFormat == Format_Y) {
         rgb = texture(plane0, vtexcoord).rrr;
     } else {

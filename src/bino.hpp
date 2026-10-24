@@ -41,6 +41,10 @@
 #include "overlay-ui.hpp"
 
 
+#if BINO_STEREO_DESKTOP
+class VideoTextureImporter;
+#endif
+
 class Bino : public QObject, QOpenGLExtraFunctions
 {
 Q_OBJECT
@@ -103,6 +107,9 @@ private:
     bool _viewPrgNonlinearOutput;
 
     /* Dynamic data for rendering */
+#if BINO_STEREO_DESKTOP
+    std::unique_ptr<VideoTextureImporter> _textureImporter;
+#endif
     VideoFrame _frame;
     VideoFrame _extFrame; // for alternating stereo
     bool _frameIsNew;
@@ -121,7 +128,7 @@ private:
     void startCaptureMode(bool withAudioInput, const QAudioDevice& audioInputDevice, InputMode inputMode);
     void rebuildColorPrgIfNecessary(int planeFormat, bool colorRangeSmall, int colorSpace, int colorTransfer);
     void rebuildViewPrgIfNecessary(SurroundMode surroundMode, bool nonLinearOutput);
-    void convertFrameToTexture(const VideoFrame& frame, unsigned int frameTex);
+    void convertFrameToTexture(VideoFrame& frame, unsigned int frameTex);
     void overlayToTexture(const QImage& img, unsigned int text);
 
 public:
