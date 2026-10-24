@@ -73,6 +73,7 @@ private:
     void rebuildDisplayPrgIfNecessary(OutputMode outputMode);
 #endif
 
+    void scheduleOverlayUpdate();
     QPointF toView(const QPointF& pos) const;
 
 protected:

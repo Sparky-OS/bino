@@ -211,6 +211,7 @@ public:
     /* Functions shared by GUI and VR mode */
     bool initProcess();
     void updateMainProcess();
+    int overlayUpdateInterval() const;
     void paintOverlays(QPainter& painter, const QSize& size);
     void preRenderProcess(
             int screenWidth,
@@ -240,5 +241,6 @@ signals:
     void newVideoFrame();
     void toggleFullscreen();
     void stateChanged();
+    void overlayChanged();
     void wantQuit();
 };

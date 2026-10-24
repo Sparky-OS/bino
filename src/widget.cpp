@@ -78,11 +78,14 @@ Widget::Widget(OutputMode outputMode, float surroundVerticalFOV, QWidget* parent
     QSize screenSize = QGuiApplication::primaryScreen()->availableSize();
     QSize maxSize = 0.75f * screenSize;
     _sizeHint = SizeBase.scaled(maxSize, Qt::KeepAspectRatio);
-    connect(Bino::instance(), &Bino::newVideoFrame, [=]() { update(); });
+    connect(Bino::instance(), &Bino::newVideoFrame, this, qOverload<>(&QWidget::update));
+    connect(Bino::instance(), &Bino::overlayChanged, this, qOverload<>(&QWidget::update));
+    // stateChanged can also be emitted while preparing a newly selected view.
+    connect(Bino::instance(), &Bino::stateChanged, this, qOverload<>(&QWidget::update), Qt::QueuedConnection);
     connect(Bino::instance(), &Bino::toggleFullscreen, [=]() { emit toggleFullscreen(); });
     connect(Playlist::instance(), SIGNAL(mediaChanged(PlaylistEntry)), this, SLOT(mediaChanged(PlaylistEntry)));
     _updateTimer.setSingleShot(true);
-    _updateTimer.setTimerType(Qt::CoarseTimer);
+    _updateTimer.setTimerType(Qt::PreciseTimer);
     connect(&_updateTimer, SIGNAL(timeout()), this, SLOT(update()));
     connect(this, &QOpenGLWidget::frameSwapped, this, []() {
         FrameTrace::event("swap", FrameTrace::timestamp(), 0, FrameTrace::pts);
@@ -111,6 +114,7 @@ OutputMode Widget::outputMode() const
 void Widget::setOutputMode(enum OutputMode mode)
 {
     _outputMode = mode;
+    update();
 }
 
 #endif
@@ -118,6 +122,7 @@ void Widget::setOutputMode(enum OutputMode mode)
 void Widget::setSurroundVerticalFieldOfView(float vfov)
 {
     _surroundVerticalFOV = qBound(5.0f, vfov, 115.0f);
+    update();
 }
 
 void Widget::resetSurroundView()
@@ -127,6 +132,7 @@ void Widget::resetSurroundView()
     _surroundVerticalAngleBase = 0.0f;
     _surroundHorizontalAngleCurrent = 0.0f;
     _surroundVerticalAngleCurrent = 0.0f;
+    update();
 }
 
 QSize Widget::sizeHint() const
@@ -479,7 +485,7 @@ void Widget::paintGL()
         painter.scale(1.0 / devicePixelRatioF(), 1.0 / devicePixelRatioF());
         Bino::instance()->paintOverlays(painter, placed.size() * devicePixelRatioF());
         painter.end();
-        _updateTimer.start(40);
+        scheduleOverlayUpdate();
         return;
     }
 
@@ -574,8 +580,16 @@ void Widget::paintGL()
     }
 
 #endif
-    // Redraw at least 25 times per second, for overlay UI updates
-    _updateTimer.start(40);
+    scheduleOverlayUpdate();
+}
+
+void Widget::scheduleOverlayUpdate()
+{
+    const int interval = Bino::instance()->overlayUpdateInterval();
+    if (interval < 0)
+        _updateTimer.stop();
+    else
+        _updateTimer.start(interval);
 }
 
 void Widget::resizeGL(int w, int h)

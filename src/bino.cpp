@@ -137,6 +137,11 @@ void Bino::startPlaylistMode()
                 }
             }
             });
+    connect(_player, &QMediaPlayer::playbackStateChanged, this, &Bino::stateChanged);
+    connect(_player, &QMediaPlayer::positionChanged, this, [this]() {
+        if (_overlayUIShow && paused())
+            emit overlayChanged();
+    });
     if (Playlist::instance()->length() > 0) {
         Playlist::instance()->start();
     } else {
@@ -461,6 +466,7 @@ void Bino::setInputMode(InputMode mode)
     _frame.reUpdate();
     _frameIsNew = true;
     LOG_DEBUG("setting input mode to %s", inputModeToString(mode));
+    emit stateChanged();
 }
 
 void Bino::setSurroundMode(SurroundMode mode)
@@ -470,6 +476,7 @@ void Bino::setSurroundMode(SurroundMode mode)
     _frame.reUpdate();
     _frameIsNew = true;
     LOG_DEBUG("setting surround mode to %s", surroundModeToString(mode));
+    emit stateChanged();
 }
 
 bool Bino::swapEyes() const
@@ -880,6 +887,18 @@ void Bino::updateMainProcess()
                 _overlayUIPointerInView,
                 _overlayUIPointerShow);
     }
+}
+
+int Bino::overlayUpdateInterval() const
+{
+    if (!_overlayUIShow)
+        return -1;
+    // A paused, locked overlay is static. Otherwise wake for progress or expiry.
+    int interval = _overlayUILocked ? -1 : int(qBound(qint64(1),
+            3000 - (QDateTime::currentMSecsSinceEpoch() - _overlayUILastTrigger), qint64(3000)));
+    if (playing())
+        interval = interval < 0 ? 40 : qMin(interval, 40);
+    return interval;
 }
 
 void Bino::rebuildColorPrgIfNecessary(int planeFormat, bool colorRangeSmall, int colorSpace, int colorTransfer)
@@ -1564,8 +1583,10 @@ void Bino::render(
 bool Bino::overlayUIPointerPress(const QPointF& pointerInView, bool lockUIEvenIfPointerNotOnBox)
 {
     bool r = _overlayUI.pointerPress(pointerInView);
-    if (r || lockUIEvenIfPointerNotOnBox)
+    if (r || lockUIEvenIfPointerNotOnBox) {
         _overlayUILocked = true;
+        emit overlayChanged();
+    }
     return r;
 }
 
@@ -1573,6 +1594,7 @@ void Bino::overlayUIPointerRelease(const QPointF& pointerInView)
 {
     _overlayUI.pointerRelease(pointerInView);
     _overlayUILocked = false;
+    emit overlayChanged();
 }
 
 void Bino::overlayUIPointerMove(const QPointF& pointerInView, bool showPointerInOverlayUI)
@@ -1580,6 +1602,7 @@ void Bino::overlayUIPointerMove(const QPointF& pointerInView, bool showPointerIn
     _overlayUILastTrigger = QDateTime::currentMSecsSinceEpoch();
     _overlayUIPointerInView = pointerInView;
     _overlayUIPointerShow = showPointerInOverlayUI;
+    emit overlayChanged();
 }
 
 void Bino::keyPressEvent(QKeyEvent* event)
