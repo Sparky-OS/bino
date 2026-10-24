@@ -35,8 +35,6 @@ protected:
     void nativeFrameRendered(const QSize&, int views) override
     {
         const auto pts = FrameTrace::pts;
-        if ((pts < 500000 || pts > 1500000) && !held)
-            return;
         if (qEnvironmentVariableIsSet("PIXEL_HOLD") && !held && pts >= 1500000) {
             held = true;
             QTimer::singleShot(0, this, [this, pts] {
@@ -49,8 +47,17 @@ protected:
                 if (!ready.open(QIODevice::WriteOnly))
                     qFatal("cannot save held timestamp");
                 ready.write(QByteArray::number(pts));
+                if (qEnvironmentVariableIsSet("PIXEL_LIFECYCLE")) {
+                    QTimer::singleShot(1000, this, [this]() { stage = 1; resize(480, 270); });
+                    QTimer::singleShot(1700, this, [this]() { hide(); });
+                    QTimer::singleShot(2000, this, [this]() { stage = 2; show(); });
+                    QTimer::singleShot(3000, this, [this]() { stage = 3; Bino::instance()->setInputMode(Input_Mono); });
+                    QTimer::singleShot(4000, this, [this]() { stage = 4; Bino::instance()->setInputMode(Input_Left_Right); });
+                }
             });
         }
+        if ((pts < 500000 || pts > 1500000) && !held)
+            return;
         GLint framebuffer = -1;
         glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &framebuffer);
         FrameTrace::event("native_read_framebuffer", FrameTrace::timestamp(), 0, pts, framebuffer);
@@ -242,19 +249,12 @@ int main(int argc, char** argv)
     } else {
         widget.show();
     }
-    if (qEnvironmentVariableIsSet("PIXEL_LIFECYCLE")) {
-        QTimer::singleShot(2500, &app, [&]() { widget.stage = 1; widget.resize(480, 270); });
-        QTimer::singleShot(3200, &app, [&]() { widget.hide(); });
-        QTimer::singleShot(3500, &app, [&]() { widget.stage = 2; widget.show(); });
-        QTimer::singleShot(4500, &app, [&]() { widget.stage = 3; bino.setInputMode(Input_Mono); });
-        QTimer::singleShot(5500, &app, [&]() { widget.stage = 4; bino.setInputMode(Input_Left_Right); });
-    }
     const bool warmup = qEnvironmentVariableIsSet("PIXEL_WARMUP");
     if (warmup) {
         for (int delay : {4000, 8000, 12000})
             QTimer::singleShot(delay, &app, [&]() { bino.setPosition(0.0f); bino.play(); });
     }
-    QTimer::singleShot(qEnvironmentVariableIsSet("PIXEL_HOLD") ? 12000 : warmup ? 16000 : 3500, &app, [&]() {
+    QTimer::singleShot(qEnvironmentVariableIsSet("PIXEL_LIFECYCLE") ? 25000 : qEnvironmentVariableIsSet("PIXEL_HOLD") ? 12000 : warmup ? 16000 : 3500, &app, [&]() {
         if (widget.isOpenGLStereo() != stereo || widget.captured.size() < (stereo && QString::fromLocal8Bit(argv[3]) != "mono" ? 30 : 15)) {
             qWarning("unexpected stereo capability %d or capture count %lld",
                     widget.isOpenGLStereo(), static_cast<long long>(widget.captured.size()));

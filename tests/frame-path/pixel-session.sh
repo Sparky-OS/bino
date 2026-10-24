@@ -12,7 +12,7 @@ if [ -n "${PIXEL_HOLD:-}" ]; then
     "$PROBE_BINARY" "${PIXEL_CLIP:-/work/clips/pixels/$PIXEL_INPUT.mkv}" "$CASE_DIR" "$PIXEL_INPUT" "$PIXEL_TARGET" > "$CASE_DIR/app.log" 2>&1 &
     probe_pid=$!
     trap 'kill "$probe_pid" 2>/dev/null || true' EXIT
-    for attempt in $(seq 1 100); do
+    for attempt in $(seq 1 300); do
         test ! -e "$CASE_DIR/held" || break
         sleep 0.1
     done
