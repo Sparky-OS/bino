@@ -11,9 +11,9 @@ Use an existing writable scratch directory with this checkout at `bino/`.
 Mount that scratch directory at `/work` in the container.
 Copy `build.sh`, `run-case.sh`, `session.sh` and `probe-matrix.sh` into its root and make them executable.
 Create `home/` and `evidence/` there.
-The Dockerfile builds on the existing ORDER 234 development image and requires the public `sparky-stereo-repo.asc` key in its build context.
+The Dockerfile builds on Debian testing and requires the public `sparky-stereo-repo.asc` and `deb-multimedia-keyring.pgp` keys in its build context.
 Use the repository address and Docker socket supplied by the lane coordinator.
-The signed edition repository has priority 1001 in the base image.
+The signed edition repository has priority 1001 above Debian and deb-multimedia.
 Record package versions after installation; the repository is moving, so the Dockerfile alone does not pin a repeat to the measured versions.
 
 Run every container with `--platform linux/amd64 --cpus 4 --user 1000:1000`.
@@ -71,3 +71,37 @@ In particular, Bino's periodic overlay redraw can yield more swaps and KWin rows
 
 These results describe the host AMD GPU and the generated clip.
 They do not emulate Carrizo/Hainan performance, cross-GPU bandwidth or a TV's frame-packing scanout.
+
+## Current-target pixel regression
+
+`widget-probe` links the real Bino player, sink, shaders and widget.
+Its subclass reads the current target framebuffer after the real `Widget::paintGL` completes.
+The probe does not replace rendering or inject private state.
+It bypasses GUI controls to keep overlays away from the source pixels.
+The generated 24 fps lossless RGB clips encode column, row, eye and frame identity, with 320×180 pixels per eye.
+The widget has the same size as an eye, so this test isolates target selection from the separate native-resolution work.
+
+```sh
+python3 /work/bino/tests/frame-path/pixels.py make /work/clips/pixels
+python3 /work/bino/tests/frame-path/pixels.py make /work/clips/pixels --mono
+/work/bino/tests/frame-path/pixel-case.sh before-stereo stereo stereo
+python3 /work/bino/tests/frame-path/pixels.py check /work/evidence/m2/before-stereo \
+    --clip /work/clips/pixels/stereo.mkv --check-passes
+```
+
+Run each case in a fresh container and compositor session.
+Use `mono stereo` for identical mono pixels in the two stereo targets, and `stereo fallback` for a normal non-stereo widget selecting the left view.
+Pass the matching `--mono` or `--fallback` flag to the checker.
+Repeat stereo with no render node and `LIBGL_ALWAYS_SOFTWARE=1` for the software renderer control.
+Check the renderer in each case's `glxinfo.txt` and `app.log`.
+The checker decodes the source independently with FFmpeg and compares every RGB channel in every capture within source PTS 0.5–1.5 seconds.
+It allows one 8-bit code value for the linear/sRGB round trip and requires at least 20 distinct source timestamps per target, paired between eyes.
+The separate pass assertion requires exactly the requested view in each callback, or view 0 for mono and non-stereo controls.
+Omit `--check-passes` to verify pixel fidelity on the old renderer while retaining its failing pass count.
+`--swap-expected` and `--stale-expected` must fail, demonstrating sensitivity to eye identity and frame freshness.
+Readback is deliberately confined to this test executable and is not a performance measurement.
+
+The llvmpipe control additionally uses 256×128 eyes (`--width 256 --height 128` in the fixture and checker, `PIXEL_WIDTH=256 PIXEL_HEIGHT=128 PIXEL_CLIP=/work/clips/pixels/stereo-256.mkv` in the probe).
+The uncorrected renderer already blends sharp address transitions at 320×180 on llvmpipe; retain that failed source check and compare its pixels before and after separately.
+The power-of-two software control and all 320×180 AMD controls must pass the source check.
+This test does not relax pixel tolerance to accommodate the existing software sampling issue.
