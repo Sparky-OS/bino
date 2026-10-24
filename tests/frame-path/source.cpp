@@ -3,6 +3,8 @@
 #include <QCryptographicHash>
 #include <QSettings>
 #include "bino.hpp"
+#include "gui.hpp"
+#include <QMenu>
 #include "playlist.hpp"
 #include "commandinterpreter.hpp"
 int main(int argc, char **argv)
@@ -30,6 +32,12 @@ int main(int argc, char **argv)
     check(bino.inputMode() == Input_Left_Right, "declared packing wins over explicit input override");
     bino.setInputMode(Input_Top_Bottom);
     check(bino.inputMode() == Input_Left_Right, "declared packing cannot be changed through the input action");
+    Gui gui(Output_Left, 90.0f, false);
+    gui.updateActions();
+    bool hidden = true;
+    for (QMenu *menu : gui.findChildren<QMenu*>())
+        if (menu->title().startsWith("Input 3D")) hidden &= !menu->menuAction()->isVisible();
+    check(hidden, "declared file hides input packing menus");
     if (write) bino.setSwapEyes(true);
     else check(bino.swapEyes(), "marked file swap survives process restart");
     open("case-11.mkv");
