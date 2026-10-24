@@ -91,6 +91,10 @@ void main(void)
     float tx = (vtexcoord.x - 0.5 * (1.0 - relativeWidth )) / relativeWidth;
     float ty = (vtexcoord.y - 0.5 * (1.0 - relativeHeight)) / relativeHeight;
     vec3 rgb = vec3(0.0, 0.0, 0.0);
+    // Interleaved outputs select a different texture in adjacent fragments.
+    // Their texture gradients must be evaluated before that divergent branch.
+    vec2 texGradientX = dFdx(vec2(tx, ty));
+    vec2 texGradientY = dFdy(vec2(tx, ty));
     if (outputMode == Output_HDMI_Frame_Pack) {
         // HDMI frame pack has left view on top, right view at bottom, and adds 1/49 vertical blank space
         // between the two views:
@@ -157,24 +161,24 @@ void main(void)
     } else if (outputMode == Output_Even_Odd_Rows) {
         float fragmentY = gl_FragCoord.y - 0.5 + fragOffsetY;
         if (mod(fragmentY, 2.0) < 0.5) {
-            rgb = texture(view0, vec2(tx, ty)).rgb;
+            rgb = textureGrad(view0, vec2(tx, ty), texGradientX, texGradientY).rgb;
         } else {
-            rgb = texture(view1, vec2(tx, ty)).rgb;
+            rgb = textureGrad(view1, vec2(tx, ty), texGradientX, texGradientY).rgb;
         }
     } else if (outputMode == Output_Even_Odd_Columns) {
         float fragmentX = gl_FragCoord.x - 0.5 + fragOffsetX;
         if (mod(fragmentX, 2.0) < 0.5) {
-            rgb = texture(view0, vec2(tx, ty)).rgb;
+            rgb = textureGrad(view0, vec2(tx, ty), texGradientX, texGradientY).rgb;
         } else {
-            rgb = texture(view1, vec2(tx, ty)).rgb;
+            rgb = textureGrad(view1, vec2(tx, ty), texGradientX, texGradientY).rgb;
         }
     } else if (outputMode == Output_Checkerboard) {
         float fragmentX = gl_FragCoord.x - 0.5 + fragOffsetX;
         float fragmentY = gl_FragCoord.y - 0.5 + fragOffsetY;
         if (abs(mod(fragmentX, 2.0) - mod(fragmentY, 2.0)) < 0.5) {
-            rgb = texture(view0, vec2(tx, ty)).rgb;
+            rgb = textureGrad(view0, vec2(tx, ty), texGradientX, texGradientY).rgb;
         } else {
-            rgb = texture(view1, vec2(tx, ty)).rgb;
+            rgb = textureGrad(view1, vec2(tx, ty), texGradientX, texGradientY).rgb;
         }
     } else {
         vec3 rgb0 = texture(view0, vec2(tx, ty)).rgb;
