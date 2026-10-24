@@ -28,4 +28,6 @@ The original film is never opened or copied.
 `extra-fixtures.py` adds both temporal eye orders, half-top-bottom 1920x1080 (two 1920x540 views), and full-SBS 3840x1080 (two 1920x1080 views).
 The temporal check includes the first submitted buffer; a black or incomplete initial pair fails.
 The HD check also covers a file whose frame data exceeds the bounded inspection byte allowance.
-Multiview and anaglyph playback and the codec quincunx flag need separate fixtures beyond this matrix.
+`quincunx-fixtures.py` adds H.264 SEI quincunx sampling in both eye orders, preserving the encoded samples and changing only the frame-packing SEI fields.
+Its second argument is the installed shared detector probe used to verify the decoded mark.
+Multiview and anaglyph playback need separate coverage beyond this matrix.
