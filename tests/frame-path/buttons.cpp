@@ -9,8 +9,10 @@ int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
     if (argc != 2) return 2;
-    QIcon::setThemeSearchPaths({"/work/test-icons"});
+    QIcon::setThemeSearchPaths({qEnvironmentVariable("BINO_TEST_ICONS", "/work/test-icons")});
     QIcon::setThemeName("breeze-dark");
+    if (qEnvironmentVariableIsSet("BINO_TEST_ICONS") && QIcon::fromTheme("media-playback-start").isNull())
+        return 4;
     Playlist playlist;
     CommandInterpreter commands;
     Bino bino(Bino::ScreenGeometry, Screen(), false);

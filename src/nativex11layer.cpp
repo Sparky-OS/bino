@@ -187,7 +187,7 @@ bool NativeX11Layer::begin(const QSize& eyeSize, int views, const QRect& destina
         if (stereo_declare_x11_child_place(display, d->child, &place) < 0)
             return false;
         if (views == 2 && stereo_declare_x11_one_view_size(display, d->child,
-                    destination.width(), destination.height()) < 0)
+                    placed.width(), placed.height()) < 0)
             return false;
         d->destination = placed;
     }

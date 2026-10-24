@@ -5,7 +5,8 @@ export BINO_FRAME_TRACE="$CASE_DIR/trace.csv"
 mkdir -p "$CASE_DIR/buffers"
 printf 'wait 5\npause\nwait 10\nquit\n' > "$CASE_DIR/control.txt"
 args=()
-if [ -n "${STRIP_INPUT:-}" ]; then args=(-i "$STRIP_INPUT"); fi
+if [ -n "${STRIP_FULLSCREEN:-}" ]; then args+=(-f); fi
+if [ -n "${STRIP_INPUT:-}" ]; then args+=(-i "$STRIP_INPUT"); fi
 player_path=$PATH
 if [ -n "${STRIP_NO_FFPROBE:-}" ]; then player_path=/work/pact-tools/no-ffprobe; fi
 PATH="$player_path" WLREC_DIR="$CASE_DIR/buffers" LD_PRELOAD=/work/pact-tools/wlrec.so WAYLAND_DEBUG=client \

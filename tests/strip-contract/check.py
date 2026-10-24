@@ -14,7 +14,10 @@ checks=report['checks']; checks['declared_stereo']=bool(rows)==case['stereo']
 if case['stereo'] and rows:
     expected=np.concatenate([np.asarray(Image.open(a.fixtures/(a.case+'-'+eye+'.png')).convert('RGB')) for eye in (('right','left') if a.swap_expected else ('left','right'))],axis=1)
     checks['native_size']=all([r['width'],r['height']]==case['strip'] for r in rows)
-    checks['source_display_size']=all(r['destination']==case['display'] for r in rows)
+    # Destination is layout in the window, not the source's natural display size.
+    # Integer viewport rounding may move either boundary by half a pixel.
+    aspect=case['display'][0]/case['display'][1]
+    checks['source_display_shape']=all(abs(r['destination'][0]-r['destination'][1]*aspect)<=0.51*(1+aspect) for r in rows)
     errors=[]
     if checks['native_size']:
         for r in rows:
