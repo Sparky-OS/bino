@@ -121,10 +121,15 @@ bool NativeX11Layer::begin(const QSize& eyeSize, int views, const QRect& destina
     const QSize pixels(eyeSize.width() * views, eyeSize.height());
     if (!d->child) {
         int count = 0;
-        const int attributes[] = { GLX_X_RENDERABLE, True, GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+        int attributes[] = { GLX_X_RENDERABLE, True, GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
             GLX_RENDER_TYPE, GLX_RGBA_BIT, GLX_DOUBLEBUFFER, True, GLX_STEREO, False,
             GLX_RED_SIZE, 10, GLX_GREEN_SIZE, 10, GLX_BLUE_SIZE, 10, GLX_ALPHA_SIZE, 0, None };
         GLXFBConfig* configs = glXChooseFBConfig(display, DefaultScreen(display), attributes, &count);
+        if (!configs || !count) {
+            XFree(configs);
+            attributes[11] = attributes[13] = attributes[15] = 8;
+            configs = glXChooseFBConfig(display, DefaultScreen(display), attributes, &count);
+        }
         if (!configs || !count) {
             d->failed = true;
             XFree(configs);

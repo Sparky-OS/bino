@@ -252,13 +252,18 @@ bool NativeVideoLayer::begin(const QSize& eyeSize, int views, const QRect& desti
         EGLint count = 0;
         EGLConfig config = nullptr;
         const bool es = QOpenGLContext::currentContext()->isOpenGLES();
-        const EGLint attributes[] = { EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGLint attributes[] = { EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
             EGL_RENDERABLE_TYPE, es ? EGL_OPENGL_ES3_BIT : EGL_OPENGL_BIT,
             EGL_RED_SIZE, 10, EGL_GREEN_SIZE, 10, EGL_BLUE_SIZE, 10, EGL_ALPHA_SIZE, 0, EGL_NONE };
         eglChooseConfig(d->display, attributes, &config, 1, &count);
         if (!count) {
+            // Match the best window precision the driver exposes, as Qt's chooser does.
+            attributes[5] = attributes[7] = attributes[9] = 8;
+            eglChooseConfig(d->display, attributes, &config, 1, &count);
+        }
+        if (!count) {
             d->failed = true;
-            qWarning("No 10-bit native video EGL configuration");
+            qWarning("No native video EGL configuration");
             d->reset();
             return false;
         }

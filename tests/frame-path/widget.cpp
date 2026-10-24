@@ -11,6 +11,8 @@
 #include <QMainWindow>
 #include <QMenuBar>
 #include "overlay-subtitle.hpp"
+#include "overlay-ui.hpp"
+#include "overlay-audio.hpp"
 #include "widget.hpp"
 #include "commandinterpreter.hpp"
 #include "frametrace.hpp"
@@ -38,6 +40,10 @@ protected:
             held = true;
             QTimer::singleShot(0, this, [this, pts] {
                 Bino::instance()->pause();
+                if (qEnvironmentVariableIsSet("PIXEL_UI")) {
+                    Bino::instance()->overlayUIPointerMove(QPointF(0.5, 0.2), false);
+                    Bino::instance()->overlayUIPointerPress(QPointF(0.5, 0.2), true);
+                }
                 QFile ready(directory + "/held");
                 if (!ready.open(QIODevice::WriteOnly))
                     qFatal("cannot save held timestamp");
@@ -102,6 +108,26 @@ protected:
                 const QPoint position = mapToGlobal(QPoint());
                 geometry.write(QJsonDocument(QJsonObject{{"x", position.x()}, {"y", position.y()},
                     {"width", width()}, {"height", height()}}).toJson());
+                if (qEnvironmentVariableIsSet("PIXEL_UI")) {
+                    QByteArray state;
+                    QDataStream writer(&state, QIODevice::WriteOnly);
+                    Bino::instance()->serializeDynamicData(writer);
+                    QDataStream reader(state);
+                    bool noFrame, swap, shown;
+                    reader >> noFrame;
+                    if (!noFrame) {
+                        VideoFrame frame;
+                        reader >> frame;
+                    }
+                    OverlayAudio audio;
+                    OverlayUI reference;
+                    reader >> swap >> audio >> reference >> shown;
+                    if (reader.status() != QDataStream::Ok) qFatal("invalid UI reference state");
+                    if (shown) {
+                        reference.redraw(width(), height());
+                        reference.image().save(directory + "/ui-reference.png");
+                    }
+                }
                 if (qEnvironmentVariableIsSet("PIXEL_SUBTITLE")) {
                     OverlaySubtitle reference;
                     reference.updateParameters("Native size: Aa Wm 0123456789");

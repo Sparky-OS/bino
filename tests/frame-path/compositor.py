@@ -43,7 +43,7 @@ for eye in range(2):
 opaque=overlay[:,:,3]==255
 assert np.sum(opaque)>500
 assert np.array_equal(crops[0][opaque],crops[1][opaque]),'opaque subtitle pixels differ between eyes'
-assert np.min(crops[0][opaque])>=254
+assert np.max(np.abs(crops[0][opaque]-overlay[:,:,:3][opaque].astype(float)))<=1
 result['identical_opaque_subtitle_pixels']=int(np.sum(opaque))
 (case/'compositor.json').write_text(json.dumps(result,indent=2)+'\n')
 print(json.dumps(result,indent=2))

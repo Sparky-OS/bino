@@ -13,6 +13,9 @@ if [ -n "${PIXEL_HOLD:-}" ]; then
         sleep 0.1
     done
     test -e "$CASE_DIR/held"
+    if [ -n "${PIXEL_CHECK_X11:-}" ]; then
+        python3 /work/bino/tests/frame-path/x11-declaration.py
+    fi
     sleep 0.3
     QT_QPA_PLATFORM=offscreen /work/probes/screen-capture screen "$CASE_DIR/screen.png" > "$CASE_DIR/capture.log" 2>&1
     QT_QPA_PLATFORM=offscreen /work/probes/screen-capture window "$CASE_DIR/window.png" >> "$CASE_DIR/capture.log" 2>&1

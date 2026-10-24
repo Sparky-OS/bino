@@ -162,3 +162,15 @@ Use `LP_NUM_THREADS=4` for the software renderer, in addition to the container C
 The X11 native path requires compositor support version 8 and libstereo-declare 1.7 for independent child placement below its ordinary parent.
 The Wayland path uses the existing full-SBS surface declaration and viewport destination.
 Both keep the stored eye raster unchanged, while the ordinary Qt window paints subtitles and controls at display resolution.
+
+`PIXEL_UI=1 PIXEL_HOLD=1` checks the playback controls as a separate ordinary overlay.
+The probe saves their original renderer's image from serialized player state; `overlay.py CASE ui-reference.png` compares alpha and premultiplied color at the display raster.
+The same checker accepts `subtitle-reference.png` for subtitles.
+`lifecycle.py CASE` checks every stored source sample and both buffer and window dimensions across the five lifecycle stages.
+`PIXEL_CHECK_X11=1` inspects the live root capability, parent declaration, child layout, source raster and destination property independently through Xlib.
+Adding `PIXEL_DROP_DECLARATION=1` removes only the child's layout before the compositor capture: the source gate must still pass while `compositor.py` fails.
+
+The native layer prefers 10-bit RGB configurations, then uses an 8-bit window configuration when that is all the driver exposes.
+The ordinary overlay keeps eight alpha bits independently of that choice.
+Desktop OpenGL is requested explicitly; leaving the renderable type unspecified can select an incompatible EGL API on NVIDIA Wayland.
+The actual video and overlay precision is recorded in the trace, so a software or NVIDIA result cannot be presented as proof of a different GPU's precision.
