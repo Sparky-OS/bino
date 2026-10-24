@@ -27,6 +27,8 @@
 #include "playlist.hpp"
 #include "tools.hpp"
 #include "log.hpp"
+#include "frametrace.hpp"
+#include "gputrace.hpp"
 
 /* These might not be defined on Mac OS. Use crude replacements. */
 #ifndef GL_MAX_FRAMEBUFFER_WIDTH
@@ -66,6 +68,9 @@ Widget::Widget(OutputMode outputMode, float surroundVerticalFOV, QWidget* parent
     _updateTimer.setSingleShot(true);
     _updateTimer.setTimerType(Qt::CoarseTimer);
     connect(&_updateTimer, SIGNAL(timeout()), this, SLOT(update()));
+    connect(this, &QOpenGLWidget::frameSwapped, this, []() {
+        FrameTrace::event("swap", FrameTrace::timestamp(), 0, FrameTrace::pts);
+    });
     setFocus();
 }
 
@@ -237,6 +242,7 @@ void Widget::rebuildDisplayPrgIfNecessary(OutputMode outputMode)
 
 void Widget::paintGL()
 {
+    FrameTrace::Scope trace("paint", FrameTrace::pts, currentTargetBuffer(), isOpenGLStereo());
     // Support for HighDPI output
     int width = _width * devicePixelRatioF();
     int height = _height * devicePixelRatioF();
@@ -247,6 +253,8 @@ void Widget::paintGL()
     bool surround;
     Bino::instance()->updateMainProcess();
     Bino::instance()->preRenderProcess(width, height, &viewCount, &viewWidth, &viewHeight, &frameDisplayAspectRatio, &surround);
+
+    FrameTrace::event("geometry", FrameTrace::timestamp(), 0, FrameTrace::pts, viewWidth, viewHeight);
 
     // Adjust the stereo mode if necessary
     bool frameIsStereo = (viewCount == 2);
@@ -345,7 +353,11 @@ void Widget::paintGL()
                 projectionMatrix, orientationMatrix, viewMatrix, v, viewWidth, viewHeight, _viewTex[v]);
         // generate mipmaps for the view texture
         glBindTexture(GL_TEXTURE_2D, _viewTex[v]);
-        glGenerateMipmap(GL_TEXTURE_2D);
+        {
+            FrameTrace::Scope mipTrace("view_mipmap", FrameTrace::pts, v);
+            FrameTrace::GpuScope gpuTrace("gpu_view_mipmap", FrameTrace::pts, v);
+            glGenerateMipmap(GL_TEXTURE_2D);
+        }
     }
 
     // Put the views on screen in the current mode

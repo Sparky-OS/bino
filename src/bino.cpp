@@ -22,6 +22,8 @@
 
 #include "bino.hpp"
 #include "log.hpp"
+#include "frametrace.hpp"
+#include "gputrace.hpp"
 #include "tools.hpp"
 #include "digestiblemedia.hpp"
 #include "metadata.hpp"
@@ -967,6 +969,8 @@ static int alignmentFromBytesPerLine(const void* data, int bpl)
 
 void Bino::convertFrameToTexture(const VideoFrame& frame, unsigned int frameTex)
 {
+    FrameTrace::Scope trace("upload_convert", frame.qframe.startTime(), frame.width, frame.height);
+    FrameTrace::GpuScope gpuTrace("gpu_upload_convert", frame.qframe.startTime(), frame.width, frame.height);
     // 1. Get the frame data into plane textures
     int w = frame.width;
     int h = frame.height;
@@ -1302,6 +1306,8 @@ void Bino::render(
         int view, // 0 = left, 1 = right
         int texWidth, int texHeight, unsigned int texture)
 {
+    FrameTrace::Scope trace("view", _frame.qframe.startTime(), view, texWidth);
+    FrameTrace::GpuScope gpuTrace("gpu_view", _frame.qframe.startTime(), view, texWidth);
     // Update screen
     switch (_screenType) {
     case ScreenUnited:

@@ -22,6 +22,7 @@
 
 #include "videosink.hpp"
 #include "log.hpp"
+#include "frametrace.hpp"
 
 
 VideoSink::VideoSink(VideoFrame* frame, VideoFrame* extFrame, bool* frameIsNew) :
@@ -63,6 +64,8 @@ void VideoSink::newPlaylistEntry(const PlaylistEntry& entry, const MetaData& met
 
 void VideoSink::processNewFrame(const QVideoFrame& frame)
 {
+    FrameTrace::pts = frame.startTime();
+    FrameTrace::Scope trace("sink", frame.startTime(), frame.isValid(), *frameIsNew);
     if (!frame.isValid() && lastFrameWasValid) {
         // keep showing the last frame of the current media; ignore that QtMultiMedia
         // with the FFmpeg backend gives us an invalid frame as soon as the media stops

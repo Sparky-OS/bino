@@ -24,6 +24,7 @@
 
 #include "videoframe.hpp"
 #include "log.hpp"
+#include "frametrace.hpp"
 
 
 VideoFrame::VideoFrame() : fallback(Fallback_Minimal)
@@ -199,7 +200,10 @@ void VideoFrame::update(InputMode im, SurroundMode sm, const QVideoFrame& frame,
                 masteringWhite = linearToHLG(qframe.surfaceFormat().maxLuminance() / 100.0f);
                 break;
             }
-            qframe.map(QVideoFrame::ReadOnly);
+            {
+                FrameTrace::Scope trace("map", qframe.startTime(), qframe.handleType(), qframe.pixelFormat());
+                qframe.map(QVideoFrame::ReadOnly);
+            }
             planeCount = qframe.planeCount();
             for (int p = 0; p < planeCount; p++) {
                 bytesPerLine[p] = qframe.bytesPerLine(p);
