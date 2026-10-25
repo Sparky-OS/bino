@@ -1,10 +1,12 @@
 #include <QApplication>
 #include "metadata.hpp"
 #include "videosink.hpp"
+#include "log.hpp"
 int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
     if (argc != 2) return 2;
+    SetLogLevel(Log_Level_Debug);
     int failed = 0;
     auto check = [&](bool good, const char *name) {
         qInfo("%s %s", good ? "PASS" : "FAIL", name); failed += !good;
@@ -12,12 +14,15 @@ int main(int argc, char **argv)
     struct Case { const char *name; InputMode input; bool declared; };
     const Case cases[] = {
         {"unmarked-SBS", Input_Left_Right_Half, false},
+        {"unmarked-RL", Input_Right_Left_Half, false},
+        {"unmarked-BT", Input_Bottom_Top, false},
         {"unmarked-FSBS", Input_Left_Right, false},
         {"unmarked-HSBS", Input_Left_Right_Half, false},
         {"unmarked-TAB", Input_Top_Bottom_Half, false},
         {"unmarked-FTAB", Input_Top_Bottom, false},
         {"unmarked-lrq", Input_Left_Right_Half, false},
         {"unmarked-SBS-SAR", Input_Left_Right, false},
+        {"unmarked-HSBS-SAR", Input_Left_Right_Half, false},
         {"declared-TAB", Input_Left_Right, true},
         {"declared-HSBS", Input_Bottom_Top, true},
         {"declared-mono-SBS", Input_Mono, true},
@@ -27,6 +32,7 @@ int main(int argc, char **argv)
         MetaData data; QString error;
         const auto url = QUrl::fromLocalFile(QString(argv[1]) + '/' + c.name + ".mkv");
         if (!data.detectCached(url, &error)) { qWarning("%s", qPrintable(error)); return 2; }
+        qInfo("actual input: %s", inputModeToString(data.inputModes.value(0)));
         check(data.inputModes.value(0) == c.input && data.declaredInputs.value(0) == c.declared, c.name);
         VideoFrame primary, secondary; bool fresh = false;
         VideoSink sink(&primary, &secondary, &fresh);
@@ -45,5 +51,9 @@ int main(int argc, char **argv)
     QVideoFrameFormat plain(QSize(320,180), QVideoFrameFormat::Format_RGBA8888);
     frame.update(Input_Unknown, Surround_Off, QVideoFrame(plain), true, true);
     check(frame.inputMode == Input_Mono, "plain frame stays mono");
+    wide.setPixelAspectRatio(QSize(2,1));
+    frame.update(Input_Left_Right_Half, Surround_Off, QVideoFrame(wide), true, true);
+    check(frame.inputMode == Input_Left_Right && qAbs(frame.aspectRatio - 640.0f / 180 * 2) < 0.001f,
+            "declared sample aspect replaces the half-view shape guess");
     return failed ? 1 : 0;
 }

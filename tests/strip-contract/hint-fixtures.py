@@ -6,12 +6,15 @@ from PIL import Image
 src, out = map(Path, sys.argv[1:]); out.mkdir(parents=True, exist_ok=True)
 cases = [
     ('unmarked-SBS', 'case-00', None, '1/1', [320,180]),
+    ('unmarked-RL', 'case-01', None, '1/1', [320,180]),
+    ('unmarked-BT', 'case-03', None, '1/1', [320,90]),
     ('unmarked-FSBS', 'case-00', None, '1/1', [160,180]),
     ('unmarked-HSBS', 'case-00', None, '1/1', [320,180]),
     ('unmarked-TAB', 'case-02', None, '1/1', [320,180]),
     ('unmarked-FTAB', 'case-02', None, '1/1', [320,90]),
     ('unmarked-lrq', 'case-00', None, '1/1', [320,180]),
     ('unmarked-SBS-SAR', 'case-10', None, '2/1', [1920,804]),
+    ('unmarked-HSBS-SAR', 'case-10', None, '2/1', [1920,804]),
     ('declared-TAB', 'case-10', 1, '2/1', [1920,804]),
     ('declared-HSBS', 'case-03', 2, '1/1', [320,90]),
     ('declared-mono-SBS', 'case-15', 0, '1/1', [3840,1080]),

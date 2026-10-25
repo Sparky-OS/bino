@@ -83,9 +83,6 @@ void VideoFrame::update(InputMode im, SurroundMode sm, const QVideoFrame& frame,
         LOG_FIREHOSE("videoframe receives new %dx%d frame with pixel format %s", width, height,
                 qPrintable(QVideoFrameFormat::pixelFormatToString(qframe.pixelFormat())));
         if (im == Input_Unknown) {
-#if BINO_STEREO_DESKTOP
-            im = Input_Mono;
-#else
             /* Two pictures next to each other: at least three times as wide as high. The shape never says top and bottom. */
 #ifdef HAVE_STEREO_LAYER
             if (width % 2 == 0 && Stereo::Video::sideBySideByShape(QSize(width, height)))
@@ -96,13 +93,22 @@ void VideoFrame::update(InputMode im, SurroundMode sm, const QVideoFrame& frame,
             else
                 im = Input_Mono;
             LOG_FIREHOSE("videoframe guesses input mode from aspect ratio %g: %s", aspectRatio, inputModeToString(im));
-#endif
         }
+#if BINO_STEREO_DESKTOP
+        // A non-unit sample aspect already describes the stored view's shape.
+        // Filename half-view guesses must not apply that correction a second time.
+        if (sar.width() > 0 && sar.height() > 0 && sar.width() != sar.height()) {
+            switch (im) {
+            case Input_Left_Right_Half: im = Input_Left_Right; break;
+            case Input_Right_Left_Half: im = Input_Right_Left; break;
+            case Input_Top_Bottom_Half: im = Input_Top_Bottom; break;
+            case Input_Bottom_Top_Half: im = Input_Bottom_Top; break;
+            default: break;
+            }
+        }
+#endif
         inputMode = im;
         if (sm == Surround_Unknown) {
-#if BINO_STEREO_DESKTOP
-            sm = Surround_Off;
-#else
             if (width == height && (inputMode == Input_Top_Bottom || inputMode == Input_Bottom_Top))
                 sm = Surround_360;
             else if (width == 2 * height && inputMode == Input_Mono)
@@ -126,7 +132,6 @@ void VideoFrame::update(InputMode im, SurroundMode sm, const QVideoFrame& frame,
             else
                 sm = Surround_Off;
             LOG_FIREHOSE("videoframe guesses surround mode %s from frame size", surroundModeToString(sm));
-#endif
         }
         surroundMode = sm;
         bool fallbackToImage = true;

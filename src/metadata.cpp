@@ -38,6 +38,7 @@
 #if BINO_STEREO_DESKTOP
 #include <stereo-content.h>
 #include <QFile>
+#include <QMimeDatabase>
 #include <time.h>
 #endif
 #include "tools.hpp"
@@ -62,13 +63,18 @@ static InputMode halfInputMode(InputMode mode)
 
 /* Whether the views of a packed stream are full or half size: what the stream says (a Matroska track's plane size, which FFmpeg
  * folds into the sample aspect ratio), then the shape of the frame, by the rule the players of Sparky Stereo OS share. */
+static bool fullViews(QSize coded, QSize sar, bool matroska, Stereo::Picture::Layout layout)
+{
+    const QSize plane = matroska ? Stereo::Video::matroskaPlane(coded, sar, layout) : QSize();
+    return Stereo::Video::views(coded, sar, plane, -1, layout).full;
+}
+
 static bool fullViews(const QJsonValue& stream, bool matroska, Stereo::Picture::Layout layout)
 {
     const QSize coded(stream["width"].toInt(), stream["height"].toInt());
     const QStringList ratio = stream["sample_aspect_ratio"].toString().split(':');
     const QSize sar = ratio.size() == 2 ? QSize(ratio[0].toInt(), ratio[1].toInt()) : QSize();
-    const QSize plane = matroska ? Stereo::Video::matroskaPlane(coded, sar, layout) : QSize();
-    return Stereo::Video::views(coded, sar, plane, -1, layout).full;
+    return fullViews(coded, sar, matroska, layout);
 }
 #endif
 
@@ -85,7 +91,6 @@ bool MetaData::detectCached(const QUrl& url, QString* errMsg)
     /* Detection via file name hints - this sets default modes that can be overridden per stream */
     InputMode defaultInputMode = Input_Unknown;
     SurroundMode defaultSurroundMode = Surround_Unknown;
-#if !BINO_STEREO_DESKTOP
     QString fileName = url.fileName();
     QString extension = getExtension(fileName);
 #ifdef HAVE_STEREO_LAYER
@@ -143,18 +148,16 @@ bool MetaData::detectCached(const QUrl& url, QString* errMsg)
         LOG_DEBUG("guessing input mode %s from file name %s", inputModeToString(defaultInputMode), qPrintable(fileName));
     }
     int i360 = fileName.indexOf("360");
-    if (i360 >= 0 && (i360 == 0 || !fileName[i360 - 1].isLetterOrNumber()) && !fileName[i360 + 3].isLetterOrNumber()) {
+    if (i360 >= 0 && (i360 == 0 || !fileName[i360 - 1].isLetterOrNumber()) && (i360 + 3 == fileName.size() || !fileName[i360 + 3].isLetterOrNumber())) {
         defaultSurroundMode = Surround_360;
     } else {
         int i180 = fileName.indexOf("180");
-        if (i180 >= 0 && (i180 == 0 || !fileName[i180 - 1].isLetterOrNumber()) && !fileName[i180 + 3].isLetterOrNumber())
+        if (i180 >= 0 && (i180 == 0 || !fileName[i180 - 1].isLetterOrNumber()) && (i180 + 3 == fileName.size() || !fileName[i180 + 3].isLetterOrNumber()))
             defaultSurroundMode = Surround_180;
     }
     if (defaultSurroundMode != Surround_Unknown) {
         LOG_DEBUG("guessing surround mode %s from file name %s", surroundModeToString(defaultSurroundMode), qPrintable(fileName));
     }
-
-#endif
 
     /* Detection via QMediaPlayer */
     QMediaPlayer player;
@@ -194,7 +197,7 @@ bool MetaData::detectCached(const QUrl& url, QString* errMsg)
     subtitleTracks = player.subtitleTracks();
     inputModes.resize(videoTracks.size(), defaultInputMode);
     surroundModes.resize(videoTracks.size(), defaultSurroundMode);
-#if defined(HAVE_STEREO_LAYER) && !BINO_STEREO_DESKTOP
+#ifdef HAVE_STEREO_LAYER
     if (nameTagLayout != Stereo::Picture::Layout::None && nameTagViews < 0) {
         /* The tag in the name does not say half or full: the size of the video does, by the rule the players share
          * (a single picture's shape holds half views). A mode that the stream's own mark has set is left alone. */
@@ -210,6 +213,7 @@ bool MetaData::detectCached(const QUrl& url, QString* errMsg)
     declaredInputs.resize(videoTracks.size(), false);
     QFile source(url.isLocalFile() ? url.toLocalFile() : QString());
     if (url.isLocalFile() && source.open(QIODevice::ReadOnly)) {
+        const QByteArray baseMime = QMimeDatabase().mimeTypeForFile(source.fileName(), QMimeDatabase::MatchContent).name().toUtf8();
         for (int track = 0; track < videoTracks.size(); ++track) {
             timespec now;
             clock_gettime(CLOCK_MONOTONIC, &now);
@@ -217,6 +221,7 @@ bool MetaData::detectCached(const QUrl& url, QString* errMsg)
             request.size = sizeof(request);
             request.abi = STEREO_CONTENT_ABI;
             request.fd = source.handle();
+            qstrncpy(request.base_mime, baseMime.constData(), sizeof(request.base_mime));
             request.deadline_us = qint64(now.tv_sec) * 1000000 + now.tv_nsec / 1000 + 400000;
             request.max_bytes = 4 * 1024 * 1024;
             request.max_packets = 128;
@@ -229,9 +234,22 @@ bool MetaData::detectCached(const QUrl& url, QString* errMsg)
             if (result.stereo >= 0) {
                 declaredInputs[track] = true;
                 inputModes[track] = inputModeFromPacking(result.layout, result.order, result.anaglyph);
+            } else if (nameTagLayout != Stereo::Picture::Layout::None && nameTagViews < 0) {
+                // Without a packing declaration, retain the shared filename/shape
+                // policy. Unit SAR says nothing about an unmarked track's planes.
+                const QSize coded(result.width, result.height);
+                const QSize sar = result.sar_num != result.sar_den
+                        ? QSize(result.sar_num, result.sar_den) : QSize();
+                const bool matroska = QByteArray(result.base_mime).contains("matroska");
+                if (coded.isValid())
+                    inputModes[track] = fullViews(coded, sar, matroska, nameTagLayout)
+                            ? defaultInputMode : halfInputMode(defaultInputMode);
             }
-            surroundModes[track] = result.coverage == 180 ? Surround_180
-                    : result.coverage == 360 ? Surround_360 : Surround_Off;
+            if (result.projection >= 0)
+                surroundModes[track] = result.coverage == 180 ? Surround_180
+                        : result.coverage == 360 ? Surround_360 : Surround_Off;
+            else if (result.stereo >= 0 && defaultSurroundMode == Surround_Unknown)
+                surroundModes[track] = Surround_Off;
             LOG_DEBUG("shared content: track=%d stereo=%d packing=%d order=%d raster=%dx%d sar=%d:%d",
                     track, result.stereo, result.layout, result.order, result.width, result.height,
                     result.sar_num, result.sar_den);

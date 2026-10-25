@@ -25,7 +25,8 @@ The compositor resizes each view once into the fitted rectangle in the window or
 Subtitles and controls use separate ordinary two-dimensional layers.
 
 For a source that declares its packing, the input packing menus are hidden.
-For an unmarked source, choose its packing in the input menu.
+For an unmarked source, Bino tries the shared filename hints, then the frame shape.
+You can correct these guesses in the input menu.
 Eye swap and unmarked-source packing corrections are saved per file in Bino's settings, without modifying the media.
 Bino has no display-format selector in this build; the desktop's output settings choose the screen format.
 
@@ -202,6 +203,12 @@ The legacy `-o` option is accepted for existing launchers and has no effect.
 Bino tries to autodetect the stereoscopic layout and the surround video mode
 from image and video metadata, but that data is often incomplete or unknown.
 In such cases, Bino has to guess.
+A declaration takes priority over every filename hint or shape guess.
+A saved input correction takes priority over guesses for an unmarked file.
+The shared hints include whole words such as SBS, TAB, HSBS, FSBS, LR and RL.
+With no packing hint, a frame at least three times as wide as it is high is guessed to be side by side.
+Half-view hints affect the display shape only when the source has square pixels.
+A non-unit pixel aspect supplies that shape directly; the stored samples are never resized.
 
 To help with this, the hints listed below can be used as the last part of the
 file name, just before the file name extension (.ext).
