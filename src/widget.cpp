@@ -702,6 +702,20 @@ void Widget::mouseReleaseEvent(QMouseEvent* e)
     }
 }
 
+void Widget::mouseDoubleClickEvent(QMouseEvent* e)
+{
+    if (e->button() != Qt::LeftButton) {
+        QOpenGLWidget::mouseDoubleClickEvent(e);
+        return;
+    }
+    _inOverlayUIEvent = false;
+    _inSurroundMovement = false;
+    _surroundHorizontalAngleCurrent = 0.0f;
+    _surroundVerticalAngleCurrent = 0.0f;
+    emit toggleFullscreen();
+    e->accept();
+}
+
 void Widget::mouseMoveEvent(QMouseEvent* e)
 {
     // Support for HighDPI output
