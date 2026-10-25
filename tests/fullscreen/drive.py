@@ -46,7 +46,8 @@ def click_at(state,overlay=False,double=False):
   x+=state['compositor_client'][0]+state['margins'][0];y+=state['compositor_client'][1]+state['margins'][1]
  vh=min(h,round(w*9/16));vw=min(w,round(h*16/9));top=y+(h-vh)/2
  # The centre of the play/pause button, or the centre of the picture.
- pos=(x+w/2,top+vh-(2.75 if overlay=='panel' else 2)*vw/18) if overlay else (x+w/2,y+h/2)
+ button_size=(vw if state['native'] else vh*8/9)/18
+ pos=(x+w/2,top+vh-(2.75 if overlay=='panel' else 2)*button_size) if overlay else (x+w/2,y+h/2)
  input('move',*pos,'click',*(['click'] if double else []),'sleep',850)
 
 input('sleep',2000)
@@ -63,7 +64,7 @@ click_at(states['single-play'],overlay='panel',double=True);states['overlay-in']
 click_at(states['overlay-in'],overlay='panel',double=True);states['overlay-out']=snapshot('overlay-out')
 checks={
  'f11_enters_fullscreen':states['f11-in']['fullscreen'],
- 'f11_fills_both_eyes':states['f11-in']['white_rects']==[[0,0,1280,720]]*(states['f11-in']['capture_width']//1280),
+ 'f11_video_reference':states['f11-in']['white_rects']==([[0,0,1280,720]]*(states['f11-in']['capture_width']//1280) if states['f11-in']['native'] else [[1,1,1279,718]]),
  'f11_leaves_fullscreen':not states['f11-out']['fullscreen'],
  'double_state_equals_f11':states['double-in']['state']==states['f11-in']['state'],
  'double_video_equals_f11':states['double-in']['white_rects']==states['f11-in']['white_rects'],

@@ -82,3 +82,6 @@ target_link_libraries(fullscreen-probe PRIVATE Qt6::OpenGLWidgets Qt6::Multimedi
 if(BINO_STEREO_DESKTOP)
     target_link_libraries(fullscreen-probe PRIVATE PkgConfig::NativeVideo PkgConfig::NativeDeclaration PkgConfig::NativeContent Qt6::GuiPrivate Qt6::MultimediaPrivate)
 endif()
+
+add_library(fullscreen-observer SHARED ../fullscreen/observer.cpp)
+target_link_libraries(fullscreen-observer PRIVATE Qt6::Widgets)

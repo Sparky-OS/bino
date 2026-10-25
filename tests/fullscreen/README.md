@@ -16,3 +16,8 @@ Repeat with mono, the ordinary Qt fallback, and Xwayland.
 
 The recorded MouseButtonDblClick must reach Widget; merely maximizing the window is a failure.
 The accepted pre-fix player is the negative control.
+
+For an installed-package run, build fullscreen-observer and set FULLSCREEN_BINARY to the installed Bino.
+The preload observer records Qt state and events, and the existing pause QAction's state; it does not replace input handlers, trigger fullscreen or toggle playback.
+The ordinary fallback retains its existing one-pixel sampling border; its double-click image rectangle must equal its own F11 rectangle.
+Its controls are composited into the source-view texture, so the driver accounts for that raster when locating the button.
