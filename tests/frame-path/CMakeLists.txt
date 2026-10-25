@@ -82,3 +82,6 @@ target_link_libraries(hints-probe PRIVATE Qt6::OpenGLWidgets Qt6::Multimedia Ste
 if(BINO_STEREO_DESKTOP)
     target_link_libraries(hints-probe PRIVATE PkgConfig::NativeVideo PkgConfig::NativeDeclaration PkgConfig::NativeContent Qt6::GuiPrivate Qt6::MultimediaPrivate)
 endif()
+
+add_executable(stored-raster-probe stored-raster.cpp)
+target_link_libraries(stored-raster-probe PRIVATE Qt6::Gui Qt6::Multimedia)
