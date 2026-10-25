@@ -74,3 +74,11 @@ target_link_libraries(source-probe PRIVATE Qt6::OpenGLWidgets Qt6::Multimedia St
 if(BINO_STEREO_DESKTOP)
     target_link_libraries(source-probe PRIVATE PkgConfig::NativeVideo PkgConfig::NativeDeclaration PkgConfig::NativeContent Qt6::GuiPrivate Qt6::MultimediaPrivate)
 endif()
+
+add_executable(fullscreen-probe fullscreen.cpp ${PROBE_SOURCES})
+target_include_directories(fullscreen-probe PRIVATE ../../src ${CMAKE_CURRENT_BINARY_DIR})
+target_compile_definitions(fullscreen-probe PRIVATE HAVE_STEREO_LAYER)
+target_link_libraries(fullscreen-probe PRIVATE Qt6::OpenGLWidgets Qt6::Multimedia Stereo::Layer)
+if(BINO_STEREO_DESKTOP)
+    target_link_libraries(fullscreen-probe PRIVATE PkgConfig::NativeVideo PkgConfig::NativeDeclaration PkgConfig::NativeContent Qt6::GuiPrivate Qt6::MultimediaPrivate)
+endif()
