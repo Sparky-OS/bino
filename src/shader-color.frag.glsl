@@ -22,6 +22,7 @@ uniform sampler2D plane0;
 uniform int channelOrder;
 uniform float sampleScale;
 uniform bool anaglyphInput;
+uniform bool nativeMultiview;
 uniform mat3 anaglyphLeft;
 uniform mat3 anaglyphRight;
 uniform sampler2D plane1;
@@ -65,6 +66,27 @@ vec3 rgb_to_linear(vec3 rgb)
     return vec3(to_linear(rgb.r), to_linear(rgb.g), to_linear(rgb.b));
 }
 
+// Native decoder views are separate source images. Clamp chroma interpolation
+// to the current eye, and interpolate fetched samples in shader precision rather
+// than rounding an R8 filtered result before the YUV-to-RGB conversion.
+vec4 chromaSample(sampler2D plane, vec2 uv)
+{
+    if (!nativeMultiview)
+        return texture(plane, uv);
+    ivec2 size = textureSize(plane, 0);
+    vec2 samplePosition = uv * vec2(size) - 0.5;
+    ivec2 corner = ivec2(floor(samplePosition));
+    vec2 fraction = fract(samplePosition);
+    int halfWidth = size.x / 2;
+    ivec2 first = ivec2(uv.x < 0.5 ? 0 : halfWidth, 0);
+    ivec2 last = first + ivec2(halfWidth, size.y) - 1;
+    vec4 top = mix(texelFetch(plane, clamp(corner, first, last), 0),
+            texelFetch(plane, clamp(corner + ivec2(1, 0), first, last), 0), fraction.x);
+    vec4 bottom = mix(texelFetch(plane, clamp(corner + ivec2(0, 1), first, last), 0),
+            texelFetch(plane, clamp(corner + ivec2(1, 1), first, last), 0), fraction.x);
+    return mix(top, bottom, fraction.y);
+}
+
 void main(void)
 {
     // Each half reads the same encoded sample, never an interpolated resize.
@@ -80,17 +102,17 @@ void main(void)
         if (planeFormat == Format_YUVp) {
             yuv = vec3(
                     texture(plane0, sourceCoord).r,
-                    texture(plane1, sourceCoord).r,
-                    texture(plane2, sourceCoord).r);
+                    chromaSample(plane1, sourceCoord).r,
+                    chromaSample(plane2, sourceCoord).r);
         } else if (planeFormat == Format_YVUp) {
             yuv = vec3(
                     texture(plane0, sourceCoord).r,
-                    texture(plane2, sourceCoord).r,
-                    texture(plane1, sourceCoord).r);
+                    chromaSample(plane2, sourceCoord).r,
+                    chromaSample(plane1, sourceCoord).r);
         } else if (planeFormat == Format_YUVsp) {
             yuv = vec3(
                     texture(plane0, sourceCoord).r,
-                    texture(plane1, sourceCoord).rg);
+                    chromaSample(plane1, sourceCoord).rg);
         }
         yuv *= sampleScale;
         mat4 m;

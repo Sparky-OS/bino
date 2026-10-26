@@ -1256,6 +1256,12 @@ void Bino::convertFrameToTexture(VideoFrame& frame, unsigned int frameTex)
     _colorPrg.setUniformValue("masteringWhite", frame.masteringWhite);
     _colorPrg.setUniformValue("channelOrder", channelOrder);
     _colorPrg.setUniformValue("anaglyphInput", bool(anaglyph));
+    bool nativeMultiview = false;
+#if BINO_STEREO_DESKTOP
+    nativeMultiview = frame.qframe.surfaceFormat().stereoFlags()
+            .testFlag(QVideoFrameFormat::StereoFlag::Multiview);
+#endif
+    _colorPrg.setUniformValue("nativeMultiview", nativeMultiview);
 #ifdef HAVE_ANAGLYPH_INPUT
     if (anaglyph) {
         for (int eye = 0; eye < 2; ++eye) {
