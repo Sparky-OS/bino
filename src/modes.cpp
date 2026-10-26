@@ -23,10 +23,34 @@
 #include "modes.hpp"
 
 
+int inputAnaglyphPair(InputMode mode)
+{
+#ifdef HAVE_ANAGLYPH_INPUT
+    return mode >= Input_Red_Cyan && mode <= Input_Blue_Amber
+            ? 1 + (int(mode) - int(Input_Red_Cyan)) / 2 : 0;
+#else
+    (void)mode;
+    return 0;
+#endif
+}
+
+bool inputAnaglyphReversed(InputMode mode)
+{
+    return inputAnaglyphPair(mode) && (int(mode) - int(Input_Red_Cyan)) % 2;
+}
+
 InputMode inputModeFromPacking(int layout, int order, int anaglyph)
 {
-    if (anaglyph)
-        return Input_Unknown;
+#ifndef HAVE_ANAGLYPH_INPUT
+    if (anaglyph) return Input_Unknown;
+#endif
+    switch (anaglyph) {
+    case 0: break;
+    case 1: return order ? Input_Cyan_Red : Input_Red_Cyan;
+    case 2: return order ? Input_Magenta_Green : Input_Green_Magenta;
+    case 3: return order ? Input_Blue_Amber : Input_Amber_Blue;
+    default: return Input_Mono; // An unknown declared packing is never a shape guess.
+    }
     switch (layout) {
     case 0: return Input_Mono;
     case 1: return order ? Input_Right_Left : Input_Left_Right;
@@ -37,7 +61,9 @@ InputMode inputModeFromPacking(int layout, int order, int anaglyph)
     case 7: return order ? Input_Quincunx_RL : Input_Quincunx_LR;
     case 8:
     case 9: return order ? Input_Alternating_RL : Input_Alternating_LR;
-    default: return Input_Unknown;
+    // A declaration without a supported packing is a base-view fallback.
+    // Only decoded, identified views may promote native multiview to a pair.
+    default: return Input_Mono;
     }
 }
 
@@ -52,6 +78,13 @@ const char* inputModeToString(InputMode mode)
     case Input_Checkerboard_RL: return "checkerboard-right-left";
     case Input_Quincunx_LR: return "quincunx-left-right";
     case Input_Quincunx_RL: return "quincunx-right-left";
+    case Input_Red_Cyan: return "anaglyph-red-cyan";
+    case Input_Cyan_Red: return "anaglyph-cyan-red";
+    case Input_Green_Magenta: return "anaglyph-green-magenta";
+    case Input_Magenta_Green: return "anaglyph-magenta-green";
+    case Input_Amber_Blue: return "anaglyph-amber-blue";
+    case Input_Blue_Amber: return "anaglyph-blue-amber";
+
 
     case Input_Unknown:
         return "unknown";
@@ -104,6 +137,13 @@ QString inputModeToStringUI(InputMode mode)
     case Input_Checkerboard_RL: return QCoreApplication::translate("Mode", "Input checkerboard, right first");
     case Input_Quincunx_LR: return QCoreApplication::translate("Mode", "Input side by side quincunx, left first");
     case Input_Quincunx_RL: return QCoreApplication::translate("Mode", "Input side by side quincunx, right first");
+    case Input_Red_Cyan: return QCoreApplication::translate("Mode", "Input anaglyph red/cyan");
+    case Input_Cyan_Red: return QCoreApplication::translate("Mode", "Input anaglyph cyan/red");
+    case Input_Green_Magenta: return QCoreApplication::translate("Mode", "Input anaglyph green/magenta");
+    case Input_Magenta_Green: return QCoreApplication::translate("Mode", "Input anaglyph magenta/green");
+    case Input_Amber_Blue: return QCoreApplication::translate("Mode", "Input anaglyph amber/blue");
+    case Input_Blue_Amber: return QCoreApplication::translate("Mode", "Input anaglyph blue/amber");
+
 
     case Input_Unknown:
         return QCoreApplication::translate("Mode", "Input autodetection");
@@ -157,6 +197,14 @@ InputMode inputModeFromString(const QString& s, bool* ok)
     if (s == "checkerboard-right-left") { if (ok) *ok = true; return Input_Checkerboard_RL; }
     if (s == "quincunx-left-right") { if (ok) *ok = true; return Input_Quincunx_LR; }
     if (s == "quincunx-right-left") { if (ok) *ok = true; return Input_Quincunx_RL; }
+#ifdef HAVE_ANAGLYPH_INPUT
+    if (s == "anaglyph-red-cyan") { if (ok) *ok = true; return Input_Red_Cyan; }
+    if (s == "anaglyph-cyan-red") { if (ok) *ok = true; return Input_Cyan_Red; }
+    if (s == "anaglyph-green-magenta") { if (ok) *ok = true; return Input_Green_Magenta; }
+    if (s == "anaglyph-magenta-green") { if (ok) *ok = true; return Input_Magenta_Green; }
+    if (s == "anaglyph-amber-blue") { if (ok) *ok = true; return Input_Amber_Blue; }
+    if (s == "anaglyph-blue-amber") { if (ok) *ok = true; return Input_Blue_Amber; }
+#endif
     if (s == "mono")
         mode = Input_Mono;
     else if (s == "top-bottom")

@@ -21,6 +21,9 @@
 uniform sampler2D plane0;
 uniform int channelOrder;
 uniform float sampleScale;
+uniform bool anaglyphInput;
+uniform mat3 anaglyphLeft;
+uniform mat3 anaglyphRight;
 uniform sampler2D plane1;
 uniform sampler2D plane2;
 uniform sampler2D plane3;
@@ -64,28 +67,30 @@ vec3 rgb_to_linear(vec3 rgb)
 
 void main(void)
 {
+    // Each half reads the same encoded sample, never an interpolated resize.
+    vec2 sourceCoord = anaglyphInput ? vec2(fract(2.0 * vtexcoord.x), vtexcoord.y) : vtexcoord;
     vec3 yuv = vec3(1.0, 0.0, 0.0);
     vec3 rgb = vec3(0.0, 1.0, 0.0);
     if (planeFormat == Format_RGB) {
-        vec4 sample0 = texture(plane0, vtexcoord);
+        vec4 sample0 = texture(plane0, sourceCoord);
         rgb = channelOrder == 1 ? sample0.gba : channelOrder == 2 ? sample0.abg : sample0.rgb;
     } else if (planeFormat == Format_Y) {
-        rgb = texture(plane0, vtexcoord).rrr;
+        rgb = texture(plane0, sourceCoord).rrr;
     } else {
         if (planeFormat == Format_YUVp) {
             yuv = vec3(
-                    texture(plane0, vtexcoord).r,
-                    texture(plane1, vtexcoord).r,
-                    texture(plane2, vtexcoord).r);
+                    texture(plane0, sourceCoord).r,
+                    texture(plane1, sourceCoord).r,
+                    texture(plane2, sourceCoord).r);
         } else if (planeFormat == Format_YVUp) {
             yuv = vec3(
-                    texture(plane0, vtexcoord).r,
-                    texture(plane2, vtexcoord).r,
-                    texture(plane1, vtexcoord).r);
+                    texture(plane0, sourceCoord).r,
+                    texture(plane2, sourceCoord).r,
+                    texture(plane1, sourceCoord).r);
         } else if (planeFormat == Format_YUVsp) {
             yuv = vec3(
-                    texture(plane0, vtexcoord).r,
-                    texture(plane1, vtexcoord).rg);
+                    texture(plane0, sourceCoord).r,
+                    texture(plane1, sourceCoord).rg);
         }
         yuv *= sampleScale;
         mat4 m;
@@ -142,6 +147,8 @@ void main(void)
         }
         rgb = (m * vec4(yuv, 1.0)).rgb;
     }
+    if (anaglyphInput)
+        rgb = (vtexcoord.x < 0.5 ? anaglyphLeft : anaglyphRight) * rgb;
     if (colorTransfer == CT_ST2084 || colorTransfer == CT_STD_B67) {
         // This code was reconstructed from the mess in qtmultimedia/src/multimedia/video;
         // it is distributed there over various shaders and C++ files.

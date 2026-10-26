@@ -20,6 +20,7 @@ find_package(Qt6 6.7.0 REQUIRED COMPONENTS OpenGLWidgets Multimedia LinguistTool
 include(cmake/StereoDesktop.cmake)
 # Optional: Sparky Stereo OS's stereo layer, the rule that the players of the edition share to tell what a 3D video is
 find_package(StereoLayer 1.5 CONFIG QUIET)
+bino_anaglyph_input()
 if(StereoLayer_FOUND)
     add_definitions(-DHAVE_STEREO_LAYER)
 endif()

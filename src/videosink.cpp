@@ -94,6 +94,7 @@ void VideoSink::processNewFrame(const QVideoFrame& frame)
         const auto format = frame.surfaceFormat();
         using Stereo = QVideoFrameFormat::StereoMode;
         int layout = 0;
+        int anaglyph = 0;
         switch (format.stereoMode()) {
         case Stereo::SideBySide: layout = 1; break;
         case Stereo::TopBottom: layout = 2; break;
@@ -102,11 +103,13 @@ void VideoSink::processNewFrame(const QVideoFrame& frame)
         case Stereo::Checkerboard: layout = 6; break;
         case Stereo::SideBySideQuincunx: layout = 7; break;
         case Stereo::FrameSequence: layout = 8; break;
+        case Stereo::AnaglyphCyanRed: anaglyph = 1; break;
+        case Stereo::AnaglyphGreenMagenta: anaglyph = 2; break;
         default: break;
         }
-        if (layout) {
+        if (layout || anaglyph) {
             const bool inverted = format.stereoFlags().testFlag(QVideoFrameFormat::StereoFlag::RightEyeFirst);
-            const InputMode declared = inputModeFromPacking(layout, inverted, 0);
+            const InputMode declared = inputModeFromPacking(layout, inverted, anaglyph);
             if (declared != inputMode)
                 needExtFrame = false;
             inputMode = declared;

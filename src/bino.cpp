@@ -34,6 +34,10 @@
 #include "metadata.hpp"
 #include "commandinterpreter.hpp"
 
+#ifdef HAVE_ANAGLYPH_INPUT
+#include <picture.h>
+#endif
+
 
 static Bino* binoSingleton = nullptr;
 
@@ -1228,16 +1232,18 @@ void Bino::convertFrameToTexture(VideoFrame& frame, unsigned int frameTex)
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
     // 2. Convert plane textures into linear RGB in the frame texture
+    const int anaglyph = inputAnaglyphPair(frame.inputMode);
+    const int convertedWidth = anaglyph ? 2 * w : w;
     glBindTexture(GL_TEXTURE_2D, frameTex);
     if (OpenGLType == OpenGL_Type_WebGL)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_BGRA, GL_UNSIGNED_SHORT, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, convertedWidth, h, 0, GL_BGRA, GL_UNSIGNED_SHORT, nullptr);
     else if (OpenGLType == OpenGL_Type_OpenGLES)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB10_A2, w, h, 0, GL_RGBA, GL_UNSIGNED_INT_2_10_10_10_REV, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB10_A2, convertedWidth, h, 0, GL_RGBA, GL_UNSIGNED_INT_2_10_10_10_REV, nullptr);
     else
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16, w, h, 0, GL_BGRA, GL_UNSIGNED_SHORT, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16, convertedWidth, h, 0, GL_BGRA, GL_UNSIGNED_SHORT, nullptr);
     glBindFramebuffer(GL_FRAMEBUFFER, _frameFbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameTex, 0);
-    glViewport(0, 0, w, h);
+    glViewport(0, 0, convertedWidth, h);
     glDisable(GL_DEPTH_TEST);
     if (!planeCount) {
         glClearColor(0, 0, 0, 1);
@@ -1249,6 +1255,22 @@ void Bino::convertFrameToTexture(VideoFrame& frame, unsigned int frameTex)
     glUseProgram(_colorPrg.programId());
     _colorPrg.setUniformValue("masteringWhite", frame.masteringWhite);
     _colorPrg.setUniformValue("channelOrder", channelOrder);
+    _colorPrg.setUniformValue("anaglyphInput", bool(anaglyph));
+#ifdef HAVE_ANAGLYPH_INPUT
+    if (anaglyph) {
+        for (int eye = 0; eye < 2; ++eye) {
+            int weights[9], divisors[3];
+            QMatrix3x3 transform;
+            Stereo::Picture::anaglyphTransform(Stereo::Picture::AnaglyphColorPair(anaglyph),
+                    bool(eye == 0) != inputAnaglyphReversed(frame.inputMode), weights, divisors);
+            for (int row = 0; row < 3; ++row)
+                for (int column = 0; column < 3; ++column)
+                    transform(row, column) = float(weights[3 * row + column]) / divisors[row];
+            _colorPrg.setUniformValue(eye ? "anaglyphRight" : "anaglyphLeft", transform);
+        }
+    }
+#endif
+
     // P010/P016 store limited-range codes in the high bits of normalized R16.
     // Convert code/65535 to the 8-bit matrix's code/65280 convention.
     const bool wideLimited = frame.colorRangeSmall
@@ -1348,6 +1370,13 @@ void Bino::preRenderProcess(int screenWidth, int screenHeight,
     case Input_Left_Right_Half:
     case Input_Right_Left_Half:
         viewWidth /= 2;
+        break;
+    case Input_Red_Cyan:
+    case Input_Cyan_Red:
+    case Input_Green_Magenta:
+    case Input_Magenta_Green:
+    case Input_Amber_Blue:
+    case Input_Blue_Amber:
         break;
     case Input_Alternating_LR:
     case Input_Alternating_RL:
@@ -1500,6 +1529,16 @@ void Bino::render(
         viewOffsetX = ((view ^ (_frame.inputMode == Input_Quincunx_RL)) ? 0.5f : 0.0f);
         frameAspectRatio /= 2.0f;
         break;
+    case Input_Red_Cyan:
+    case Input_Cyan_Red:
+    case Input_Green_Magenta:
+    case Input_Magenta_Green:
+    case Input_Amber_Blue:
+    case Input_Blue_Amber:
+        viewFactorX = 0.5f;
+        viewOffsetX = view ? 0.5f : 0.0f;
+        // The conversion expanded two views; the source aspect belongs to each.
+        break;
     case Input_Unknown: // cannot happen, update() sets a known mode
     case Input_Mono:
         // nothing to do
@@ -1600,7 +1639,8 @@ void Bino::render(
     _viewPrg.setUniformValue("showOverlayAudio", !_separateOverlays && !_frame.isValid());
     _viewPrg.setUniformValue("showOverlaySubtitle", !_separateOverlays && !_frame.subtitle.isEmpty());
     _viewPrg.setUniformValue("showOverlayUI", !_separateOverlays && _overlayUIShow);
-    QSize storedView(qRound(_frame.width * viewFactorX), qRound(_frame.height * viewFactorY));
+    const int textureWidth = _frame.width * (inputAnaglyphPair(_frame.inputMode) ? 2 : 1);
+    QSize storedView(qRound(textureWidth * viewFactorX), qRound(_frame.height * viewFactorY));
     if (rotation == 1 || rotation == 3)
         storedView.transpose();
     _viewPrg.setUniformValue("nativeSamples", !finalRenderingStep

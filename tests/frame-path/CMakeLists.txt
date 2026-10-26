@@ -12,6 +12,7 @@ target_link_libraries(transfer-trace PRIVATE dl)
 set(CMAKE_AUTOMOC ON)
 find_package(Qt6 REQUIRED COMPONENTS OpenGLWidgets)
 find_package(StereoLayer REQUIRED CONFIG)
+bino_anaglyph_input()
 add_executable(widget-probe widget.cpp native-target.cpp
     ../../src/log.cpp ../../src/tools.cpp ../../src/screen.cpp ../../src/modes.cpp
     ../../src/metadata.cpp ../../src/playlist.cpp ../../src/videoframe.cpp

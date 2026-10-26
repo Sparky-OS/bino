@@ -6,11 +6,12 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 case, fixtures, packing = map(Path,sys.argv[1:4])
+swap = "--swap" in sys.argv[4:]
 log = case/'buffers/log.jsonl'
 assert log.exists(), 'missing declared stereo strip (marked input was shown as mono)'
 left = np.array(Image.open(fixtures/(str(packing)+'-left.png')).convert('RGB'))
 right = np.array(Image.open(fixtures/(str(packing)+'-right.png')).convert('RGB'))
-expected = np.concatenate((left,right),axis=1).astype(int)
+expected = np.concatenate((right,left) if swap else (left,right),axis=1).astype(int)
 checked = 0
 for line in log.read_text().splitlines():
     item = json.loads(line)

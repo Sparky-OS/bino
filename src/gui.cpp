@@ -228,6 +228,17 @@ Gui::Gui(OutputMode outputMode, float surroundVerticalFOV, bool fullscreen) :
     _3dInputActionGroup->addAction(threeDInAlternatingRL)->setData(int(Input_Alternating_RL));
     connect(threeDInAlternatingRL, SIGNAL(triggered()), this, SLOT(threeDInput()));
     addBinoAction(threeDInAlternatingRL, threeDInputAlternatingMenu);
+#ifdef HAVE_ANAGLYPH_INPUT
+    QMenu* anaglyphInputMenu = threeDMenu->addMenu(tr("Input 3D anaglyph"));
+    _3dInputMenus.append(anaglyphInputMenu->menuAction());
+    for (int mode = Input_Red_Cyan; mode <= Input_Blue_Amber; ++mode) {
+        QAction* action = new QAction(inputModeToStringUI(InputMode(mode)), this);
+        action->setCheckable(true);
+        _3dInputActionGroup->addAction(action)->setData(mode);
+        connect(action, SIGNAL(triggered()), this, SLOT(threeDInput()));
+        addBinoAction(action, anaglyphInputMenu);
+    }
+#endif
 #if !BINO_STEREO_DESKTOP
     threeDMenu->addSeparator();
     _3dOutputActionGroup = new QActionGroup(this);

@@ -46,7 +46,17 @@ enum InputMode {
     Input_Checkerboard_RL = 17,
     Input_Quincunx_LR = 18,
     Input_Quincunx_RL = 19,
+    Input_Red_Cyan = 20,
+    Input_Cyan_Red = 21,
+    Input_Green_Magenta = 22,
+    Input_Magenta_Green = 23,
+    Input_Amber_Blue = 24,
+    Input_Blue_Amber = 25,
+
 };
+
+int inputAnaglyphPair(InputMode mode);
+bool inputAnaglyphReversed(InputMode mode);
 
 InputMode inputModeFromPacking(int layout, int order, int anaglyph = 0);
 

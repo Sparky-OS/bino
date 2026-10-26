@@ -8,3 +8,21 @@ else()
     set(BINO_DISPLAY_SHADER src/shader-display.frag.glsl)
     set(BINO_MANUAL "${CMAKE_CURRENT_LIST_DIR}/../doc/bino-manual.md")
 endif()
+
+# Gate the additive shared anaglyph-input API for builds against older layers.
+function(bino_anaglyph_input)
+    option(BINO_REQUIRE_ANAGLYPH_INPUT "Require the shared anaglyph input conversion API" OFF)
+    if(TARGET Stereo::Layer)
+        include(CheckCXXSourceCompiles)
+        set(CMAKE_REQUIRED_LIBRARIES Stereo::Layer)
+        check_cxx_source_compiles("#include <picture.h>
+int main() { int w[9], d[3]; return !Stereo::Picture::anaglyphTransform(
+Stereo::Picture::AnaglyphColorPair::RedCyan, true, w, d); }" HAVE_ANAGLYPH_INPUT)
+        if(HAVE_ANAGLYPH_INPUT)
+            add_compile_definitions(HAVE_ANAGLYPH_INPUT)
+        endif()
+    endif()
+    if(BINO_REQUIRE_ANAGLYPH_INPUT AND NOT HAVE_ANAGLYPH_INPUT)
+        message(FATAL_ERROR "This build requires Stereo::Picture::anaglyphTransform")
+    endif()
+endfunction()
