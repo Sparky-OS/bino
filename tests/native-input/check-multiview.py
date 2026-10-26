@@ -28,6 +28,7 @@ def expected(data):
     return np.rint(np.clip(rgb,0,1)*255).astype('int16')
 refs=[np.fromfile(root/f'view{e}.yuv',dtype='uint8').reshape(96,-1) for e in range(2)]
 frames=[np.concatenate([expected(refs[e][n]) for e in range(2)],axis=1) for n in range(96)]
+if "--swap" in sys.argv[3:]: frames=[np.concatenate((f[:,w:],f[:,:w]),axis=1) for f in frames]
 records=[json.loads(l) for l in (case/'buffers/log.jsonl').read_text().splitlines()]
 checked=0;fail=[]
 for item in records:

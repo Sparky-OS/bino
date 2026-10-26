@@ -45,3 +45,22 @@ def custom_boxes(data):
         result+=struct.pack('>I4s',len(payload)+8,tag)+payload
     return result
 (out/'wide-custom.mp4').write_bytes(custom_boxes((out/'wide-unmarked.mp4').read_bytes()))
+# Container SAR on actual MV-HEVC views; compressed samples and associations stay
+# byte-identical. This fixture has mdat before moov, so chunk offsets stay valid.
+if len(sys.argv)>2:
+    native=Path(sys.argv[2]).read_bytes()
+    assert native.index(b'mdat')<native.index(b'moov')
+    native_containers=dict(containers);native_containers[b'hvc1']=78
+    def native_sar(data):
+        offset=0;result=b''
+        while offset<len(data):
+            size,tag=struct.unpack_from('>I4s',data,offset)
+            assert 8<=size<=len(data)-offset
+            payload=data[offset+8:offset+size];offset+=size
+            if tag==b'pasp':continue
+            if tag in native_containers:
+                skip=native_containers[tag];payload=payload[:skip]+native_sar(payload[skip:])
+            if tag==b'hvc1':payload+=struct.pack('>I4sII',16,b'pasp',2,1)
+            result+=struct.pack('>I4s',len(payload)+8,tag)+payload
+        return result
+    (out/'native-sar2.mp4').write_bytes(native_sar(native))
