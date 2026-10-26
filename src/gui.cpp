@@ -47,6 +47,9 @@
 #include "metadata.hpp"
 #include "version.hpp"
 #include "log.hpp"
+#ifdef HAVE_ANAGLYPH_INPUT
+#include <picture.h>
+#endif
 
 
 QMenu* Gui::addBinoMenu(const QString& title)
@@ -231,8 +234,11 @@ Gui::Gui(OutputMode outputMode, float surroundVerticalFOV, bool fullscreen) :
 #ifdef HAVE_ANAGLYPH_INPUT
     QMenu* anaglyphInputMenu = threeDMenu->addMenu(tr("Input 3D anaglyph"));
     _3dInputMenus.append(anaglyphInputMenu->menuAction());
+    anaglyphInputMenu->setToolTipsVisible(true);
     for (int mode = Input_Red_Cyan; mode <= Input_Blue_Amber; ++mode) {
         QAction* action = new QAction(inputModeToStringUI(InputMode(mode)), this);
+        action->setToolTip(Stereo::Picture::colorDisclaimer());
+        action->setStatusTip(action->toolTip());
         action->setCheckable(true);
         _3dInputActionGroup->addAction(action)->setData(mode);
         connect(action, SIGNAL(triggered()), this, SLOT(threeDInput()));
