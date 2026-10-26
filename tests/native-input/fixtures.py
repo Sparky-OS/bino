@@ -25,3 +25,23 @@ for name,l,rgt in [('red-cyan',(r,(r+g)//2,(r+b)//2),((r+g)//2,g,b)),
                    ('amber-blue',(r,g,(g+b)//2),((r+b)//2,(g+b)//2,b))]:
     for eye, channels in [('left',l),('right',rgt)]:
         Image.fromarray(np.stack(channels,axis=-1).astype('uint8')).save(out/(name+'-'+eye+'.png'))
+# An unspecified/custom declaration on a wide raster is NOT a pair. Keep mdat
+# before moov so inserting a visual sample-entry box cannot shift chunk offsets.
+import struct
+wide=np.tile(source,(2,4,1))
+Image.fromarray(wide).save(out/'custom-source.png')
+subprocess.run(['ffmpeg','-nostdin','-v','error','-y','-loop','1','-framerate','12','-i',str(out/'custom-source.png'),
+                '-frames:v','36','-c:v','libx264rgb','-crf','0','-preset','ultrafast','-threads','4',str(out/'wide-unmarked.mp4')],check=True)
+containers={b'moov':0,b'trak':0,b'mdia':0,b'minf':0,b'stbl':0,b'stsd':8,b'avc1':78}
+def custom_boxes(data):
+    offset=0; result=b''
+    while offset<len(data):
+        size,tag=struct.unpack_from('>I4s',data,offset)
+        assert 8<=size<=len(data)-offset
+        payload=data[offset+8:offset+size]; offset+=size
+        if tag in containers:
+            skip=containers[tag];payload=payload[:skip]+custom_boxes(payload[skip:])
+        if tag==b'avc1': payload+=struct.pack('>I4sIB',13,b'st3d',0,3)
+        result+=struct.pack('>I4s',len(payload)+8,tag)+payload
+    return result
+(out/'wide-custom.mp4').write_bytes(custom_boxes((out/'wide-unmarked.mp4').read_bytes()))
