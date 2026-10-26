@@ -35,6 +35,11 @@ VideoSink::VideoSink(VideoFrame* frame, VideoFrame* extFrame, bool* frameIsNew) 
     surroundMode(Surround_Unknown),
     lastFrameWasValid(false)
 {
+#if BINO_STEREO_DESKTOP
+    // Unmarked input can acquire a packing from a hint or a per-file correction.
+    // Keep its samples until that decision is made, without changing its marks.
+    setPreserveNativeSize(true);
+#endif
     connect(this, SIGNAL(videoFrameChanged(const QVideoFrame&)), this, SLOT(processNewFrame(const QVideoFrame&)));
 }
 

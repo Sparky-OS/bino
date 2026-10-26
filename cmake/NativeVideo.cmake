@@ -14,6 +14,19 @@ int main() {
 }" BINO_HAVE_X11_CHILD_PLACE)
 cmake_pop_check_state()
 add_compile_definitions(BINO_HAVE_X11_CHILD_PLACE=$<BOOL:${BINO_HAVE_X11_CHILD_PLACE}>)
+cmake_push_check_state(RESET)
+set(CMAKE_REQUIRED_LIBRARIES Qt6::Multimedia)
+check_cxx_source_compiles("#include <QVideoSink>
+int main() {
+    QVideoSink sink;
+    sink.setPreserveNativeSize(true);
+    return !sink.preserveNativeSize();
+}" BINO_HAVE_NATIVE_VIDEO_SIZE)
+cmake_pop_check_state()
+if(NOT BINO_HAVE_NATIVE_VIDEO_SIZE)
+    message(FATAL_ERROR "The stereo desktop build needs Qt Multimedia's native-raster sink capability")
+endif()
+
 find_program(WAYLAND_SCANNER wayland-scanner REQUIRED)
 pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
 set(VIEWPORTER_XML "${WAYLAND_PROTOCOLS_DIR}/stable/viewporter/viewporter.xml")
