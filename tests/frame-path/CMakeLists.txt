@@ -96,3 +96,6 @@ endif()
 
 add_library(fullscreen-observer SHARED ../fullscreen/observer.cpp)
 target_link_libraries(fullscreen-observer PRIVATE Qt6::Widgets)
+
+add_executable(native-input-lifecycle ../native-input/lifecycle.cpp)
+target_link_libraries(native-input-lifecycle PRIVATE Qt6::Gui Qt6::Multimedia)
