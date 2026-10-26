@@ -4,6 +4,7 @@
 #include <QVideoSink>
 #include <QVideoFrame>
 #include <QTimer>
+#include <QVariant>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <cstdio>
@@ -12,11 +13,14 @@
 int main(int argc, char **argv)
 {
     QGuiApplication app(argc, argv);
-    if (argc != 6) return 2;
+    if (argc != 7) return 2;
+    const bool native = QByteArray(argv[6]) == "native";
     const QSize expectedSize(atoi(argv[2]), atoi(argv[3]));
     const QSize expectedSar(atoi(argv[4]), atoi(argv[5]));
     QMediaPlayer player;
     QVideoSink sink;
+    // The same binary exercises the old library, where the property is absent.
+    sink.setProperty("preserveNativeSize", native);
     player.setVideoSink(&sink);
     QObject::connect(&sink, &QVideoSink::videoFrameChanged, &app, [&](const QVideoFrame &frame) {
         if (!frame.isValid()) return;
@@ -25,7 +29,7 @@ int main(int argc, char **argv)
         const bool good = size == expectedSize && sar == expectedSar;
         QJsonObject result{{"width", size.width()}, {"height", size.height()},
             {"sar_num", sar.width()}, {"sar_den", sar.height()},
-            {"stereo_mode", int(format.stereoMode())}, {"pass", good}};
+            {"native_requested", native}, {"stereo_mode", int(format.stereoMode())}, {"pass", good}};
         puts(QJsonDocument(result).toJson(QJsonDocument::Compact).constData());
         app.exit(good ? 0 : 1);
     });
