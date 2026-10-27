@@ -86,6 +86,10 @@
 <context>
     <name>Gui</name>
     <message>
+        <source>Input 3D anaglyph</source>
+        <translation>3Dアナグリフ入力</translation>
+    </message>
+    <message>
         <location filename="../src/gui.cpp" line="80"/>
         <source>&amp;File</source>
         <translation>&amp;ファイル</translation>
@@ -655,6 +659,30 @@ Please check your configuration and setup, or try manual launching from the comm
 </context>
 <context>
     <name>Mode</name>
+    <message>
+        <source>Input anaglyph red/cyan</source>
+        <translation>アナグリフ入力 赤/シアン</translation>
+    </message>
+    <message>
+        <source>Input anaglyph cyan/red</source>
+        <translation>アナグリフ入力 シアン/赤</translation>
+    </message>
+    <message>
+        <source>Input anaglyph green/magenta</source>
+        <translation>アナグリフ入力 緑/マゼンタ</translation>
+    </message>
+    <message>
+        <source>Input anaglyph magenta/green</source>
+        <translation>アナグリフ入力 マゼンタ/緑</translation>
+    </message>
+    <message>
+        <source>Input anaglyph amber/blue</source>
+        <translation>アナグリフ入力 アンバー/青</translation>
+    </message>
+    <message>
+        <source>Input anaglyph blue/amber</source>
+        <translation>アナグリフ入力 青/アンバー</translation>
+    </message>
     <message>
         <location filename="../src/modes.cpp" line="73"/>
         <source>Input autodetection</source>

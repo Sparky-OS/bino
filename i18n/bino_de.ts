@@ -86,6 +86,10 @@
 <context>
     <name>Gui</name>
     <message>
+        <source>Input 3D anaglyph</source>
+        <translation>3D-Anaglypheneingabe</translation>
+    </message>
+    <message>
         <location filename="../src/gui.cpp" line="80"/>
         <source>&amp;File</source>
         <translation>&amp;Datei</translation>
@@ -656,6 +660,30 @@ Bitte prüfe Deine Konfiguration und Technik, oder versuche manuelles Starten vo
 </context>
 <context>
     <name>Mode</name>
+    <message>
+        <source>Input anaglyph red/cyan</source>
+        <translation>Anaglypheneingabe Rot/Cyan</translation>
+    </message>
+    <message>
+        <source>Input anaglyph cyan/red</source>
+        <translation>Anaglypheneingabe Cyan/Rot</translation>
+    </message>
+    <message>
+        <source>Input anaglyph green/magenta</source>
+        <translation>Anaglypheneingabe Grün/Magenta</translation>
+    </message>
+    <message>
+        <source>Input anaglyph magenta/green</source>
+        <translation>Anaglypheneingabe Magenta/Grün</translation>
+    </message>
+    <message>
+        <source>Input anaglyph amber/blue</source>
+        <translation>Anaglypheneingabe Bernstein/Blau</translation>
+    </message>
+    <message>
+        <source>Input anaglyph blue/amber</source>
+        <translation>Anaglypheneingabe Blau/Bernstein</translation>
+    </message>
     <message>
         <location filename="../src/modes.cpp" line="73"/>
         <source>Input autodetection</source>
