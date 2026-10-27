@@ -1,0 +1,11 @@
+{
+  "en": ["Input 3D anaglyph", "Input anaglyph red/cyan", "Input anaglyph cyan/red", "Input anaglyph green/magenta", "Input anaglyph magenta/green", "Input anaglyph amber/blue", "Input anaglyph blue/amber"],
+  "pl": ["Wejście anaglifowe 3D", "Wejście anaglifowe czerwony/cyjan", "Wejście anaglifowe cyjan/czerwony", "Wejście anaglifowe zielony/magenta", "Wejście anaglifowe magenta/zielony", "Wejście anaglifowe bursztynowy/niebieski", "Wejście anaglifowe niebieski/bursztynowy"],
+  "pt_BR": ["Entrada de anáglifo 3D", "Entrada de anáglifo vermelho/ciano", "Entrada de anáglifo ciano/vermelho", "Entrada de anáglifo verde/magenta", "Entrada de anáglifo magenta/verde", "Entrada de anáglifo âmbar/azul", "Entrada de anáglifo azul/âmbar"],
+  "fr": ["Entrée anaglyphe 3D", "Entrée anaglyphe rouge/cyan", "Entrée anaglyphe cyan/rouge", "Entrée anaglyphe vert/magenta", "Entrée anaglyphe magenta/vert", "Entrée anaglyphe ambre/bleu", "Entrée anaglyphe bleu/ambre"],
+  "de": ["3D-Anaglypheneingabe", "Anaglypheneingabe Rot/Cyan", "Anaglypheneingabe Cyan/Rot", "Anaglypheneingabe Grün/Magenta", "Anaglypheneingabe Magenta/Grün", "Anaglypheneingabe Bernstein/Blau", "Anaglypheneingabe Blau/Bernstein"],
+  "ja": ["3Dアナグリフ入力", "アナグリフ入力 赤/シアン", "アナグリフ入力 シアン/赤", "アナグリフ入力 緑/マゼンタ", "アナグリフ入力 マゼンタ/緑", "アナグリフ入力 アンバー/青", "アナグリフ入力 青/アンバー"],
+  "ko": ["3D 애너글리프 입력", "애너글리프 입력 빨강/시안", "애너글리프 입력 시안/빨강", "애너글리프 입력 초록/마젠타", "애너글리프 입력 마젠타/초록", "애너글리프 입력 호박색/파랑", "애너글리프 입력 파랑/호박색"],
+  "zh_CN": ["3D 色差立体输入", "色差立体输入 红/青", "色差立体输入 青/红", "色差立体输入 绿/品红", "色差立体输入 品红/绿", "色差立体输入 琥珀色/蓝", "色差立体输入 蓝/琥珀色"],
+  "zh_TW": ["3D 色差立體輸入", "色差立體輸入 紅/青", "色差立體輸入 青/紅", "色差立體輸入 綠/洋紅", "色差立體輸入 洋紅/綠", "色差立體輸入 琥珀色/藍", "色差立體輸入 藍/琥珀色"]
+}
